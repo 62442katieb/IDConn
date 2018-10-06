@@ -1,0 +1,237 @@
+
+# coding: utf-8
+
+# In[4]:
+
+
+from __future__ import division
+from os.path import join, basename, exists
+from os import makedirs
+from glob import glob
+
+from nilearn import input_data, datasets, plotting, regions
+from nilearn.image import concat_imgs
+from nilearn.input_data import NiftiLabelsMasker
+from nilearn.connectome import ConnectivityMeasure
+from scipy.stats import pearsonr
+
+import nipype.pipeline.engine as pe
+import nipype.interfaces.io as nio
+import nipype.interfaces.utility as util
+from nipype.interfaces.fsl import InvWarp
+
+import bct
+import json
+import numpy as np
+import pandas as pd
+
+
+# ## Preprocessing
+# Largely following the Westphal et al. (2017) paper, but taking into account the things that Dani Bassett does in her papers (which I still need to look into).
+# ### Preprocessing methods per Westphal et al., 2017
+# Whole-brain MRI was administered on a 3.0 Tesla Siemens TIM Trio scanner at the UCLA Staglin Center for Cognitive Neuroscience. Functional images were ac- quired using a T2*-weighted echoplanar imaging sequence (TR   2.0 s; TE   30 ms; flip angle   75°; FOV   19.2 cm; voxel resolution   3.0   3.0   3.7 mm; 33 interleaved axial slices). The first three volumes of each 239-volume run were discarded to ensure T1 stabilization.<br>Preprocessing was done in SPM8.
+# 1. Slice timing correction
+# 2. Motion correction
+# 3. Unwarping
+# 4. Coregistration to subject's T1
+# 5. Anatomical segmentation
+# 6. Spatial normalization to MNI template
+# 7. Spatial smoothing (6mm FWHM)
+# 8. High-pass filtering (236_s_)
+# 9. Timecourse per voxel demeaned.
+# ### Alterations made below
+# Preprocessing was done with FSL tools in Nipype.
+# 3. No fieldmaps, so no unwarping... (look into this)
+# 7. No smoothing
+# 8. High pass filtering at 55s
+# 9. Standardized TS
+
+# In[1]:
+
+
+def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh):
+    from nipype.interfaces.fsl import MCFLIRT, FLIRT, FNIRT, ExtractROI, ApplyWarp, MotionOutliers, InvWarp, FAST
+    #from nipype.interfaces.afni import AlignEpiAnatPy
+    from nipype.interfaces.utility import Function
+    from nilearn.plotting import plot_anat
+    from nilearn import input_data
+
+    #WRITE A DARA GRABBER
+    def get_niftis(subject_id, data_dir, run):
+        from os.path import join, exists
+        t1 = join(data_dir, subject_id, 'session-1', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
+        #t1_brain_mask = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'fsl', 'anatomical-bet.nii.gz')
+        epi = join(data_dir, subject_id, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+        assert exists(t1), "t1 does not exist"
+        assert exists(epi), "epi does not exist"
+        standard = '/home/applications/fsl/5.0.8/data/standard/MNI152_T1_2mm.nii.gz'
+        return t1, epi, standard
+
+    data = Function(function=get_niftis, input_names=["subject_id", "data_dir", "run"],
+                            output_names=["t1", "epi", "standard"])
+    data.inputs.data_dir = data_dir
+    data.inputs.subject_id = subject
+    data.inputs.run = run
+    grabber = data.run()
+
+    #reg_dir = '/home/data/nbc/physics-learning/data/first-level/{0}/session-1/retr/retr-{1}/retr-5mm.feat/reg'.format(subject, run)
+
+    qa1 = join(sink_dir, 'qa', '{0}-{1}_t1_flirt.png'.format(subject, run))
+    qa2 = join(sink_dir, 'qa', '{0}-{1}_mni_flirt.png'.format(subject, run))
+    qa3 = join(sink_dir, 'qa', '{0}-{1}_mni_fnirt.png'.format(subject, run))
+    confound_file = join(sink_dir, subject,'{0}-{1}_retr-confounds.txt'.format(subject, run))
+
+    #run motion correction
+    mcflirt = MCFLIRT(ref_vol=144, save_plots=True, output_type='NIFTI_GZ')
+    mcflirt.inputs.in_file = grabber.outputs.epi
+    #mcflirt.inputs.in_file = join(data_dir, subject, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+    mcflirt.inputs.out_file = join(sink_dir, subject,'{0}-{1}_retr-mcf.nii.gz'.format(subject, run))
+    flirty = mcflirt.run()
+
+    #motion outliers
+    try:
+        mout = MotionOutliers(metric='fd', threshold=motion_thresh)
+        mout.inputs.in_file = grabber.outputs.epi
+        mout.inputs.out_file = join(sink_dir, subject, '{0}-{1}_retr-fd_gt_09mm'.format(subject, run))
+        mout.inputs.out_metric_plot = join(sink_dir, subject, '{0}-{1}_retr-metrics.png'.format(subject, run))
+        mout.inputs.out_metric_values = join(sink_dir, subject,'{0}-{1}_retr-fd.txt'.format(subject, run))
+        moutliers = mout.run()
+        outliers = np.genfromtxt(moutliers.outputs.out_file)
+    except Exception as e:
+        print e
+        outliers = np.genfromtxt(mout.inputs.out_metric_values)
+        outliers[outliers > motion_thresh] = 1
+        outliers[outliers < motion_thresh] = 0
+
+    #concatenate motion parameters and motion outliers to form confounds file
+    motion = np.genfromtxt(flirty.outputs.par_file)
+    #outliers = outliers.reshape((outliers.shape[0],1))
+    conf = np.concatenate((motion, outliers), axis=1)
+    np.savetxt(confound_file, conf, delimiter=',')
+
+    #extract an example volume for normalization
+    ex_fun = ExtractROI(t_min=144, t_size=1)
+    ex_fun.inputs.in_file = flirty.outputs.out_file
+    ex_fun.inputs.roi_file = join(sink_dir, subject,'{0}-{1}_retr-example_func.nii.gz'.format(subject, run))
+    fun = ex_fun.run()
+
+    #need white matter map for BBR, but I think you need it for the reference image
+    #so if I wanted to do BBR, I'd have to reg EPI to T1 and then invert the xfm
+    #segment = FAST(output_biascorrected=True, output_biasfield=False, segments=True, probability_maps=False)
+    #segment.inputs.out_basename = join(data_dir, subject,'session-1', 'retr', 'mni', 'fast')
+    #segment.inputs.in_files = grabber.outputs.t1
+    #faster = segment.run()
+
+    #two-step normalization using flirt and fnirt, outputting qa pix
+    flit = FLIRT(cost_func="corratio", dof=12)
+    reg_func = flit.run(reference=fun.outputs.roi_file, in_file=grabber.outputs.t1, searchr_x=[-180,180], searchr_y=[-180,180],
+                        out_file=join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.nii.gz'.format(subject, run)),
+                        out_matrix_file = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.mat'.format(subject, run)))
+    reg_mni = flit.run(reference=grabber.outputs.t1, in_file=grabber.outputs.standard, searchr_y=[-180,180], searchr_z=[-180,180],
+                        out_file=join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.nii.gz'.format(subject, run)),
+                        out_matrix_file = join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.mat'.format(subject, run)))
+
+    #plot_stat_map(aligner.outputs.out_file, bg_img=fun.outputs.roi_file, colorbar=True, draw_cross=False, threshold=1000, output_file=qa1a, dim=-2)
+    display = plot_anat(fun.outputs.roi_file, dim=-1)
+    display.add_edges(reg_func.outputs.out_file)
+    display.savefig(qa1, dpi=300)
+    display.close()
+
+    display = plot_anat(grabber.outputs.t1, dim=-1)
+    display.add_edges(reg_mni.outputs.out_file)
+    display.savefig(qa2, dpi=300)
+    display.close()
+
+    perf = FNIRT(output_type='NIFTI_GZ')
+    perf.inputs.warped_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1.nii.gz'.format(subject, run))
+    perf.inputs.affine_file = reg_mni.outputs.out_matrix_file
+    perf.inputs.in_file = grabber.outputs.standard
+    perf.inputs.subsampling_scheme = [8,4,2,2]
+    perf.inputs.fieldcoeff_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1-warpcoef.nii.gz'.format(subject, run))
+    perf.inputs.field_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1-warp.nii.gz'.format(subject, run))
+    perf.inputs.ref_file = grabber.outputs.t1
+    reg2 = perf.run()
+    #plot fnirted MNI overlaid on example func
+    display = plot_anat(grabber.outputs.t1, dim=-1)
+    display.add_edges(reg2.outputs.warped_file)
+    display.savefig(qa3, dpi=300)
+    display.close()
+
+    xfmd_ntwks = []
+    for i in np.arange(0, len(masks)):
+        #warp takes us from mni to t1, postmat
+        warp = ApplyWarp(interp="nn", abswarp=True)
+        warp.inputs.in_file = masks[i]
+        warp.inputs.ref_file = fun.outputs.roi_file
+        warp.inputs.field_file = reg2.outputs.field_file
+        warp.inputs.postmat = reg_func.outputs.out_matrix_file
+        warp.inputs.premat = reg_mni.outputs.out_matrix_file
+        warp.inputs.out_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, mask_names[i]))
+        net_warp = warp.run()
+        xfmd_ntwks.append(net_warp.outputs.out_file)
+
+        qa_file = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, mask_names[i]))
+
+        display = plotting.plot_roi(net_warp, bg_img=fun.outputs.roi_file,
+                                    colorbar=True, vmin=0, vmax=18,
+                                    draw_cross=False)
+        display.savefig(qa_file, dpi=300)
+        display.close()
+
+    return flirty.outputs.out_file, confound_file
+
+#choose your atlas and either fetch it from Nilearn using one of the the 'datasets' functions
+laird_2011_icns = '/home/data/nbc/physics-learning/retrieval-graphtheory/18-networks-5.14-mni_2mm.nii.gz'
+#laird_2011_icns = '/Users/Katie/Dropbox/Projects/physics-retrieval/18-networks-5.14.nii.gz'
+harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
+masks = [laird_2011_icns, harvox_hippo]
+mask_names = ['18_icn', 'hippo']
+
+
+# In[ ]:
+
+
+#only want post subjects
+subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
+            '214', '215', '216', '217', '218', '219', '320', '321', '323',
+            '324', '325', '327', '328', '330', '331', '333', '334',
+            '335', '336', '337', '338', '339', '340', '341', '342', '343', '344',
+            '345', '346', '347', '348', '349', '350', '451', '453', '455',
+            '458', '459', '460', '462', '463', '464', '465', '467',
+            '468', '469', '470', '502', '503', '571', '572', '573', '574',
+            '577', '578', '581', '582', '584', '585', '586', '587',
+            '588', '589', '591', '592', '593', '594', '595', '596', '597',
+            '598', '604', '605', '606', '607', '608', '609', '610', '612',
+            '613', '614', '615', '617', '618', '619', '620', '621', '622',
+            '623', '624', '625', '626', '627', '629', '630', '631', '633',
+            '634']
+#all subjects 102 103 101 104 106 107 108 110 212 X213 214 215 216 217 218 219 320 321 X322 323 324 325
+#327 328 X329 330 331 X332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 451
+#X452 453 455 X456 X457 458 459 460 462 463 464 465 467 468 469 470 502 503 571 572 573 574 X575 577 578
+#X579 X580 581 582 584 585 586 587 588 589 X590 591 592 593 594 595 596 597 598 604 605 606 607 608 609
+#610 X611 612 613 614 615 X616 617 618 619 620 621 622 623 624 625 626 627 X628 629 630 631 633 634
+#errors in fnirt-to-mni: 213, 322, 329, 332, 452, 456, 457, 575, 579, 580, 590, 611, 616, 628
+#subjects without post-IQ measure: 452, 461, 501, 575, 576, 579, 583, 611, 616, 628, 105, 109, 211, 213, 322, 326, 329, 332
+#subjects = ['101']
+
+#subjects for whom preproc didn't run because of motion reasons
+subjects_re = {'217': [0], '334': [1], '335': [1], '453': [1], '463': [0,1], '618': [1], '626': [0]}
+
+data_dir = '/home/data/nbc/physics-learning/data/pre-processed'
+sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
+#sink_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data/out'
+
+motion_thresh=0.9
+
+runs = [0, 1]
+
+#run preprocessing once per run per subject
+for subject in subjects_re.keys():
+    for run in subjects_re[subject]:
+        if not exists(join(sink_dir, subject,)):
+            makedirs(join(sink_dir, subject,))
+        #xfm laird 2011 maps to subject's epi space & define masker
+        try:
+            [epi, confounds] = preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh)
+        except Exception as e:
+            print 'Error with {0}, run {1}, because {2}.'.format(subject, run, e)
