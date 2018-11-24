@@ -154,6 +154,7 @@ df = pd.DataFrame({'global efficiency phy': np.empty([len(subjects),], dtype=flo
 
 
 #run preprocessing once per run per subject
+#and maybe try regressing out the task to see if the results change with the remaining intrinsic FC
 for subject in subjects:
     ntwk_run_cond = {}
     ntwk = {}
