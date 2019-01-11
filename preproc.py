@@ -49,7 +49,7 @@ import pandas as pd
 # In[1]:
 
 
-def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh):
+def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, moco, mout, ):
     from nipype.interfaces.fsl import MCFLIRT, FLIRT, FNIRT, ExtractROI, ApplyWarp, MotionOutliers, InvWarp, FAST
     #from nipype.interfaces.afni import AlignEpiAnatPy
     from nipype.interfaces.utility import Function
@@ -81,13 +81,16 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh):
     qa3 = join(sink_dir, 'qa', '{0}-{1}_mni_fnirt.png'.format(subject, run))
     confound_file = join(sink_dir, subject,'{0}-{1}_retr-confounds.txt'.format(subject, run))
 
-    #run motion correction
-    mcflirt = MCFLIRT(ref_vol=144, save_plots=True, output_type='NIFTI_GZ')
-    mcflirt.inputs.in_file = grabber.outputs.epi
-    #mcflirt.inputs.in_file = join(data_dir, subject, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
-    mcflirt.inputs.out_file = join(sink_dir, subject,'{0}-{1}_retr-mcf.nii.gz'.format(subject, run))
-    flirty = mcflirt.run()
-
+    #run motion correction if indicated
+    if motion == True:
+        mcflirt = MCFLIRT(ref_vol=144, save_plots=True, output_type='NIFTI_GZ')
+        mcflirt.inputs.in_file = grabber.outputs.epi
+        #mcflirt.inputs.in_file = join(data_dir, subject, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+        mcflirt.inputs.out_file = join(sink_dir, subject,'{0}-{1}_retr-mcf.nii.gz'.format(subject, run))
+        flirty = mcflirt.run()
+        motion = np.genfromtxt(flirty.outputs.par_file)
+    else:
+        print "no moco needed"
     #motion outliers
     try:
         mout = MotionOutliers(metric='fd', threshold=motion_thresh)
@@ -104,7 +107,7 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh):
         outliers[outliers < motion_thresh] = 0
 
     #concatenate motion parameters and motion outliers to form confounds file
-    motion = np.genfromtxt(flirty.outputs.par_file)
+
     #outliers = outliers.reshape((outliers.shape[0],1))
     conf = np.concatenate((motion, outliers), axis=1)
     np.savetxt(confound_file, conf, delimiter=',')
