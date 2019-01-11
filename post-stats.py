@@ -10,6 +10,12 @@ sns.set_style("whitegrid")
 
 data_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data'
 df = pd.read_csv(join(data_dir, 'iq+brain+demo.csv'), index_col=0, header=0)
+f_gender_df = pd.read_csv(join(data_dir, 'rescored_gender_identity_female-post.csv'), index_col=0, header=0)
+m_gender_df = pd.read_csv(join(data_dir, 'rescored_gender_identity_male-post.csv'), index_col=0, header=0)
+phy_rt_df = pd.read_csv(join(data_dir, 'retr_physcond_accuracy_by_gender_post.txt'), sep='\t', index_col=1)
+gen_rt_df = pd.read_csv(join(data_dir, 'retr_gencond_accuracy_by_gender_post.txt'), sep='\t', index_col=1)
+
+df = pd.concat([df, phy_rt_df], axis=1, sort=True)
 
 mean = pd.Series(df.mean())
 median = pd.Series(df.median())
@@ -25,6 +31,16 @@ descriptives.to_csv(join(data_dir, 'decriptives.csv'))
 
 df_ladies = df[df['Sex'] == 'F']
 df_ladies = df_ladies.drop('Sex', axis=1)
+df_ladies = pd.concat([df_ladies, f_gender_df], axis=1, sort=False)
+
+df_dudes = df[df['Sex'] == 'M']
+df_dudes = df_dudes.drop('Sex', axis=1)
+df_dudes = pd.concat([df_dudes, m_gender_df], axis=1, sort=False)
+
+f_gender_df['Masculinity'] = 6 - f_gender_df['Total']
+m_gender_df['Masculinity'] = m_gender_df['Total']
+df_ladies['Masculinity'] = f_gender_df['Masculinity']
+df_dudes['Masculinity'] = m_gender_df['Masculinity']
 
 mean = pd.Series(df_ladies.mean())
 median = pd.Series(df_ladies.median())
@@ -37,9 +53,6 @@ list_of_measures = [mean, median, sdev, skew, kurtosis]
 lady_descriptives = pd.concat(list_of_measures, axis=1, sort=False)
 lady_descriptives = lady_descriptives.rename({0:'mean', 1:'median', 2:'sdev', 3:'variance', 4:'skew', 5:'kurtosis'}, axis=1)
 lady_descriptives.to_csv(join(data_dir, 'decriptives_f.csv'))
-
-df_dudes = df[df['Sex'] == 'M']
-df_dudes = df_dudes.drop('Sex', axis=1)
 
 mean = pd.Series(df_dudes.mean())
 median = pd.Series(df_dudes.median())
@@ -56,6 +69,7 @@ dude_descriptives.to_csv(join(data_dir, 'decriptives_m.csv'))
 #scorr = spearmanr(df)
 pcorr = df.corr(method='spearman')
 
+
 brain = ['fc default mode-left central executive gen',
         'fc default mode-left central executive phy',
         'fc default mode-right central executive gen',
@@ -70,9 +84,8 @@ brain = ['fc default mode-left central executive gen',
         'global efficiency gen', 'global efficiency phy',
         'le default mode gen', 'le default mode phy',
         'le left central executive gen', 'le left central executive phy',
-        'le right central executive gen', 'le right central executive phy']
-behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
-         'Perceptual Reasoning Sum_2', 'Full Scale IQ_2']
+        'le right central executive gen', 'le right central executive phy']behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
+                 'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
 
 #compare brain measures in physics and general conditions, separating male & female ppts
 pairs = {}
@@ -138,10 +151,16 @@ for key in df_ladies.keys():
 sex_differences = pd.DataFrame.from_dict(sex_diff, orient='index')
 sex_differences.to_csv(join(data_dir, 'sex_differences.csv'))
 
+all_gend = pd.concat([f_gender_df, m_gender_df], axis=0, sort=True)
+big_df = pd.concat([df, all_gend], axis=1, sort=True)
+
+behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
+         'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy', 'Masculinity']
+
 scorrs = {}
 for key in brain:
     for meas in behav:
-        scorrs[key, meas] = spearmanr(df[key], df[meas], nan_policy='omit')
+        scorrs[key, meas] = spearmanr(big_df[key], big_df[meas], nan_policy='omit')
 all_corr = pd.DataFrame.from_dict(scorrs, orient='index')
 all_corr.to_csv(join(data_dir, 'corr_all_brain_meas.csv'))
 
@@ -151,6 +170,7 @@ for key in brain:
         mcorrs[key, meas] = spearmanr(df_dudes[key], df_dudes[meas], nan_policy='omit')
 
 male_corr = pd.DataFrame.from_dict(mcorrs, orient='index')
+male_corr.min()
 male_corr.to_csv(join(data_dir, 'corr_male_brain_meas.csv'))
 
 fcorrs = {}
@@ -159,4 +179,23 @@ for key in brain:
         fcorrs[key, meas] = spearmanr(df_ladies[key], df_ladies[meas], nan_policy='omit')
 
 female_corr = pd.DataFrame.from_dict(fcorrs, orient='index')
+female_corr.min()
 female_corr.to_csv(join(data_dir, 'corr_female_brain_meas.csv'))
+
+spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Physics Retrieval Accuracy'].dropna())
+spearmanr(df_dudes['Total'].dropna(), df_dudes['Mean Physics Retrieval Accuracy'].dropna())
+spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Correct RT'].dropna())
+spearmanr(df_dudes['Total'], df_dudes['Mean Correct RT'], nan_policy='omit')
+spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Incorrect RT'].dropna())
+spearmanr(df_dudes['Total'], df_dudes['Mean Incorrect RT'], nan_policy='omit')
+
+f_gid_behav = {}
+m_gid_behav = {}
+for key in behav:
+    f_gid_behav[key] = spearmanr(df_ladies['Total'], df_ladies[key], nan_policy='omit')
+    m_gid_behav[key] = spearmanr(df_dudes['Total'], df_dudes[key], nan_policy='omit')
+
+f_gid_behav_corr = pd.DataFrame.from_dict(f_gid_behav, orient='index')
+f_gid_behav_corr.to_csv(join(data_dir, 'corr_female_gid_meas.csv'))
+m_gid_behav_corr = pd.DataFrame.from_dict(m_gid_behav, orient='index')
+m_gid_behav_corr.to_csv(join(data_dir, 'corr_male_gid_meas.csv'))

@@ -5,7 +5,7 @@ from nipype.interfaces.fsl import ApplyWarp, FNIRT
 
 def fnirt_again(data_dir, sink_dir, subject, run, masks, mask_names):
     import numpy as np
-    def get_niftis(subject, data_dir, sink_dir, run):
+    def get_niftis(subject, data_dir, sink_dir, run, masks):
         from os.path import join, exists
         t1 = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
         #t1_brain_mask = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'fsl', 'anatomical-bet.nii.gz')
@@ -15,13 +15,15 @@ def fnirt_again(data_dir, sink_dir, subject, run, masks, mask_names):
         standard = '/home/applications/fsl/5.0.8/data/standard/MNI152_T1_2mm.nii.gz'
         mni2t1 = join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.mat'.format(subject, run))
         t12epi = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.mat'.format(subject, run))
-        return t1, example_func, standard, mni2t1, t12epi
+        masks = masks
+        return t1, example_func, standard, mni2t1, t12epi, masks
 
-    data = Function(function=get_niftis, input_names=["subject", "data_dir", "sink_dir", "run"],
-                            output_names=["t1", "example_func", "standard", "mni2t1", "t12epi", ])
+    data = Function(function=get_niftis, input_names=["subject", "data_dir", "sink_dir", "run", "masks"],
+                            output_names=["t1", "example_func", "standard", "mni2t1", "t12epi", "masks"])
     data.inputs.data_dir = data_dir
     data.inputs.sink_dir = sink_dir
     data.inputs.subject = subject
+    data.inputs.masks = masks
     data.inputs.run = run
     grabber = data.run()
 
@@ -38,7 +40,7 @@ def fnirt_again(data_dir, sink_dir, subject, run, masks, mask_names):
     for i in np.arange(0, len(masks)):
         #warp takes us from mni to t1, postmat
         warp = ApplyWarp(interp="nn", abswarp=True)
-        warp.inputs.in_file = masks[i]
+        warp.inputs.in_file = grabber.outputs.masks[i]
         warp.inputs.ref_file = grabber.outputs.example_func
         warp.inputs.field_file = reg2.outputs.field_file
         warp.inputs.postmat = grabber.outputs.t12epi
@@ -59,7 +61,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
             '613', '614', '615', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '629', '630', '631', '633',
             '634']
-subjects = ['216', '347', '571', '594', '621']
+subjects = ['216', '621', '631', '633', '634', '347']
 
 #subjects = ['101']
 
@@ -67,24 +69,26 @@ data_dir = '/home/data/nbc/physics-learning/data/pre-processed'
 sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
 runs = [0, 1]
 
-laird_2011_icns = '/home/data/nbc/physics-learning/retrieval-graphtheory/18-networks-5.14-mni_2mm.nii.gz'
-harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
-masks = [laird_2011_icns, harvox_hippo]
-mask_names = ['18_icn', 'hippo']
+#laird_2011_icns = '/home/data/nbc/physics-learning/retrieval-graphtheory/18-networks-5.14-mni_2mm.nii.gz'
+#harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
+icn_regions = '/home/kbott006/physics-retrieval/idconn-retrieval/18-networks-5.14-mni_2mm_regions.nii.gz'
+#masks = [laird_2011_icns, harvox_hippo]
+#mask_names = ['18_icn', 'hippo']
+mask_names = ['icn-regions']
 
 for subject in subjects:
     for run in runs:
-
         try:
-            #t1 = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
-            #t1_func = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.nii.gz'.format(subject, run))
+            t1 = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
+            t1_func = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.nii.gz'.format(subject, run))
             example_func = join(sink_dir, subject,'{0}-{1}_retr-example_func.nii.gz'.format(subject, run))
-            #mni_flirt = join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.nii.gz'.format(subject, run))
+            mni_flirt = join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.nii.gz'.format(subject, run))
+            yay = fnirt_again(data_dir, sink_dir, subject, run, icn_regions, mask_names)
             #mni_fnirt = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1.nii.gz'.format(subject, run))
 
-            coreg = join(sink_dir, 'qa', '{0}-{1}_t1_flirt.png'.format(subject, run))
-            norm1 = join(sink_dir, 'qa', '{0}-{1}_mni_flirt.png'.format(subject, run))
-            norm2 = join(sink_dir, 'qa', '{0}-{1}_mni_fnirt.png'.format(subject, run))
+            #coreg = join(sink_dir, 'qa', '{0}-{1}_t1_flirt.png'.format(subject, run))
+            #norm1 = join(sink_dir, 'qa', '{0}-{1}_regions.png'.format(subject, run))
+            #norm2 = join(sink_dir, 'qa', '{0}-{1}_mni_fnirt.png'.format(subject, run))
 
             #display = plotting.plot_anat(t1, dim=-1)
             #display.add_edges(mni_flirt)
@@ -98,12 +102,12 @@ for subject in subjects:
             #display.add_edges(t1_func)
             #display.savefig(coreg, dpi=300)
 
-            for mask in mask_names:
-                mask_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, mask))
-                mask_qa = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, mask))
-                display = plotting.plot_roi(mask_file, bg_img=example_func,
-                                            colorbar=True, vmin=0, vmax=18,
-                                            draw_cross=False)
-                display.savefig(mask_qa, dpi=300)
+            #for mask in mask_names:
+            #    mask_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, mask))
+            #    mask_qa = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, mask))
+            #    display = plotting.plot_roi(mask_file, bg_img=example_func,
+            #                                colorbar=True, vmin=0, vmax=18,
+            #                                draw_cross=False)
+            #    display.savefig(mask_qa, dpi=300)
         except Exception as e:
             print e
