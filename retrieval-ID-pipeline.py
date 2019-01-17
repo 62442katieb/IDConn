@@ -53,8 +53,8 @@ import pandas as pd
 #add labels for the parcellation
 labels = ['limbic', 'orbitofrontal', 'basal ganglia', 'salience', 'hunger',
           'motor learning', 'frontoparietal', 'hand', 'motor execution', 'higher order visual',
-          'lateral visual', 'medial visual', 'default mode',' cerebellum', 'left central executive',
-          'auditory', 'mouth', 'right central executive']
+          'lateral visual', 'medial visual', 'default mode',' cerebellum', 'right central executive',
+          'auditory', 'mouth', 'left central executive']
 
 #harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
 #masks = [laird_2011_icns, harvox_hippo]
@@ -184,8 +184,8 @@ for subject in subjects:
         hipp[condition] = np.vstack((hipp_run_cond['{0} 0'.format(condition)], hipp_run_cond['{0} 1'.format(condition)]))
         corrmats[condition] = correlation_measure.fit_transform([ntwk[condition]])[0]
         np.savetxt(join(data_dir, subject, '{0}-{1}-corrmat.csv'.format(subject, condition)), corrmats[condition])
-        df.at[subject, 'fc default mode-left central executive {0}'.format(condition)] = corrmats[condition][12,14]
-        df.at[subject, 'fc default mode-right central executive {0}'.format(condition)] = corrmats[condition][12,17]
+        df.at[subject, 'fc default mode-right central executive {0}'.format(condition)] = corrmats[condition][12,14]
+        df.at[subject, 'fc default mode-left central executive {0}'.format(condition)] = corrmats[condition][12,17]
         df.at[subject, 'fc left central executive-right central executive {0}'.format(condition)] = corrmats[condition][14,17]
         ge = []
         le = {}
