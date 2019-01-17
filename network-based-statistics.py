@@ -13,7 +13,7 @@ df = pd.read_csv(join(data_dir, 'iq+brain+demo.csv'), index_col=0, header=0)
 labels = ['limbic', 'orbitofrontal', 'basal ganglia', 'salience', 'hunger',
           'motor learning', 'frontoparietal', 'hand', 'motor execution', 'higher order visual',
           'lateral visual', 'medial visual', 'default mode',' cerebellum', 'left central executive',
-          'auditory', 'mouth', 'right central executive']
+          'auditory', 'mouth', 'left central executive']
 
 m_df = df[df['Sex'] == 'M']
 m_df.to_csv(join(data_dir, 'male_df.csv'))

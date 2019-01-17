@@ -33,10 +33,10 @@ labels = ['limbic', 'limbic', 'orbitofrontal', 'orbitofrontal', 'basal ganglia',
           'motor execution', 'higher order visual', 'higher order visual',
           'lateral visual', 'lateral visual', 'medial visual', 'default mode',
           'default mode', 'default mode', 'default mode', 'default mode', ' cerebellum',
-          'left central executive', 'left central executive', 'left central executive',
-          'left central executive', 'left central executive', 'auditory', 'auditory',
-          'mouth', 'mouth', 'right central executive', 'right central executive',
-          'right central executive']
+          'right central executive', 'right central executive', 'right central executive',
+          'right central executive', 'right central executive', 'auditory', 'auditory',
+          'mouth', 'mouth', 'left central executive', 'left central executive',
+          'left central executive']
 
 behav = ['Phy48Grade', 'Verbal Comprehension Sum_2','Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
 
