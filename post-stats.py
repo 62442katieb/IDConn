@@ -6,6 +6,33 @@ from os.path import join
 from scipy.stats import pearsonr, spearmanr, ttest_rel, ttest_ind, levene
 import statsmodels.api as sm
 
+def jili_sidak_mc(data, alpha):
+    import math
+    import numpy as np
+
+    mc_corrmat = data.corr()
+    eigvals, eigvecs = np.linalg.eig(mc_corrmat)
+
+    M_eff = 0
+    for eigval in eigvals:
+        if abs(eigval) >= 0:
+            if abs(eigval) >= 1:
+                M_eff += 1
+            else:
+                M_eff += abs(eigval) - math.floor(abs(eigval))
+        else:
+            M_eff += 0
+    print('Number of effective comparisons: {0}'.format(M_eff))
+
+    #and now applying M_eff to the Sidak procedure
+    sidak_p = 1 - (1 - alpha)**(1/M_eff)
+    if sidak_p < 0.00001:
+        print('Critical value of {:.3f}'.format(alpha),'becomes {:2e} after corrections'.format(sidak_p))
+    else:
+        print('Critical value of {:.3f}'.format(alpha),'becomes {:.6f} after corrections'.format(sidak_p))
+    return sidak_p, M_eff
+
+
 sns.set_style("whitegrid")
 
 data_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data'
@@ -84,8 +111,8 @@ brain = ['fc default mode-left central executive gen',
         'global efficiency gen', 'global efficiency phy',
         'le default mode gen', 'le default mode phy',
         'le left central executive gen', 'le left central executive phy',
-        'le right central executive gen', 'le right central executive phy']behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
-                 'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
+        'le right central executive gen', 'le right central executive phy']
+behav = ['Phy48Grade', 'Verbal Comprehension Sum_2','Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
 
 #compare brain measures in physics and general conditions, separating male & female ppts
 pairs = {}
@@ -157,6 +184,10 @@ big_df = pd.concat([df, all_gend], axis=1, sort=True)
 behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
          'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy', 'Masculinity']
 
+jili_sidak_mc(big_df[behav],0.05)
+jili_sidak_mc(df_dudes[behav],0.05)
+jili_sidak_mc(df_ladies[behav],0.05)
+
 scorrs = {}
 for key in brain:
     for meas in behav:
@@ -191,11 +222,15 @@ spearmanr(df_dudes['Total'], df_dudes['Mean Incorrect RT'], nan_policy='omit')
 
 f_gid_behav = {}
 m_gid_behav = {}
+gid_behav = {}
 for key in behav:
     f_gid_behav[key] = spearmanr(df_ladies['Total'], df_ladies[key], nan_policy='omit')
     m_gid_behav[key] = spearmanr(df_dudes['Total'], df_dudes[key], nan_policy='omit')
+    gid_behav[key] = spearmanr(big_df['Total'], big_df[key], nan_policy='omit')
 
 f_gid_behav_corr = pd.DataFrame.from_dict(f_gid_behav, orient='index')
 f_gid_behav_corr.to_csv(join(data_dir, 'corr_female_gid_meas.csv'))
 m_gid_behav_corr = pd.DataFrame.from_dict(m_gid_behav, orient='index')
 m_gid_behav_corr.to_csv(join(data_dir, 'corr_male_gid_meas.csv'))
+gid_behav_corr = pd.DataFrame.from_dict(gid_behav, orient='index')
+gid_behav_corr.to_csv(join(data_dir, 'corr_gid_meas.csv'))
