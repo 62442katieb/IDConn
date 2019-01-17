@@ -21,10 +21,10 @@ labels = ['limbic', 'limbic', 'orbitofrontal', 'orbitofrontal', 'basal ganglia',
           'motor execution', 'higher order visual', 'higher order visual',
           'lateral visual', 'lateral visual', 'medial visual', 'default mode',
           'default mode', 'default mode', 'default mode', 'default mode', ' cerebellum',
-          'left central executive', 'left central executive', 'left central executive',
-          'left central executive', 'left central executive', 'auditory', 'auditory',
-          'mouth', 'mouth', 'right central executive', 'right central executive',
-          'right central executive']
+          'right central executive', 'right central executive', 'right central executive',
+          'right central executive', 'right central executive', 'auditory', 'auditory',
+          'mouth', 'mouth', 'left central executive', 'left central executive',
+          'left central executive']
 
 
 #only want post subjects

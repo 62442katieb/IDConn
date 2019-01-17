@@ -28,8 +28,8 @@ big_df = pd.concat([df, all_gend], axis=1, sort=True)
 
 labels = ['limbic', 'orbitofrontal', 'basal ganglia', 'salience', 'hunger',
           'motor learning', 'frontoparietal', 'hand', 'motor execution', 'higher order visual',
-          'lateral visual', 'medial visual', 'default mode', 'cerebellum', 'left central executive',
-          'auditory', 'mouth', 'right central executive']
+          'lateral visual', 'medial visual', 'default mode', 'cerebellum', 'right central executive',
+          'auditory', 'mouth', 'left central executive']
 
 behav = ['Phy48Grade', 'Verbal Comprehension Sum_2','Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
 

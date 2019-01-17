@@ -19,10 +19,10 @@ labels = ['limbic', 'limbic', 'orbitofrontal', 'orbitofrontal', 'basal ganglia',
           'motor execution', 'higher order visual', 'higher order visual',
           'lateral visual', 'lateral visual', 'medial visual', 'default mode',
           'default mode', 'default mode', 'default mode', 'default mode', ' cerebellum',
-          'left central executive', 'left central executive', 'left central executive',
-          'left central executive', 'left central executive', 'auditory', 'auditory',
-          'mouth', 'mouth', 'right central executive', 'right central executive',
-          'right central executive']
+          'right central executive', 'right central executive', 'right central executive',
+          'right central executive', 'right central executive', 'auditory', 'auditory',
+          'mouth', 'mouth', 'right central executive', 'left central executive',
+          'left central executive']
 #remove all network-wise brain measures
 df.drop(['fc default mode-left central executive gen','fc default mode-left central executive phy', 'fc default mode-right central executive gen', 'fc default mode-right central executive phy', 'fc hippo-default mode gen', 'fc hippo-default mode phy', 'fc hippo-left central executive gen', 'fc hippo-left central executive phy', 'fc hippo-right central executive gen', 'fc hippo-right central executive phy', 'fc left central executive-right central executive gen', 'fc left central executive-right central executive phy', 'global efficiency gen', 'global efficiency phy', 'le default mode gen', 'le default mode phy', 'le left central executive gen', 'le left central executive phy', 'le right central executive gen', 'le right central executive phy'], axis=1, inplace=True)
 df.keys()
