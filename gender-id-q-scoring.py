@@ -66,40 +66,13 @@ f_post_scores = f_df['2'].mean(axis=1)
 m_pre_scores = m_df['1'].mean(axis=1)
 m_post_scores = m_df['2'].mean(axis=1)
 
-m_pre_scores.mean(skipna=True)
-m_pre_scores.std(skipna=True)
-m_post_scores.mean(skipna=True)
-m_post_scores.std(skipna=True)
-
-f_pre_scores.mean(skipna=True)
-f_pre_scores.std(skipna=True)
-f_post_scores.mean(skipna=True)
-f_post_scores.std(skipna=True)
-
-np.mean(m_pre_scores - m_post_scores)
-
-#do recalled gender identity scores vary significantly pre-post?
-f_diff = ttest_rel(f_pre_scores, f_post_scores, nan_policy='omit')
-f_diff
-m_diff = ttest_rel(m_pre_scores, m_post_scores, nan_policy='omit')
-m_diff
-
-#how about between genders?
-pre_diff = ttest_ind(f_pre_scores, m_pre_scores, nan_policy='omit')
-post_diff = ttest_ind(f_post_scores, m_post_scores, nan_policy='omit')
-
-pre_diff
-post_diff
-
-f_df['GID Pre'] = f_pre_scores
-f_df['GID Post'] = f_post_scores
-m_df['GID Pre'] = m_pre_scores
-m_df['GID Post'] = m_post_scores
+f_df['1', 'GID Pre'] = f_pre_scores
+f_df['2', 'GID Post'] = f_post_scores
+m_df['1', 'GID Pre'] = m_pre_scores
+m_df['2', 'GID Post'] = m_post_scores
 
 f_df.dropna(axis=0, how='all', inplace=True)
 m_df.dropna(axis=0, how='all', inplace=True)
-
-m_df.head()
 
 f_df.to_csv(join(data_dir, 'rescored_gender_identity_female.csv'))
 m_df.to_csv(join(data_dir, 'rescored_gender_identity_male.csv'))
