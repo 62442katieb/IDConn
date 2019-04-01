@@ -3,8 +3,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from os.path import join
-from scipy.stats import pearsonr, spearmanr, ttest_rel, ttest_ind, levene, mannwhitneyu
+from scipy.stats import pearsonr, spearmanr, ttest_rel, ttest_ind, levene, mannwhitneyu, normaltest, norm
 import statsmodels.api as sm
+import missingno as msno
 
 def jili_sidak_mc(data, alpha):
     import math
@@ -36,6 +37,7 @@ def jili_sidak_mc(data, alpha):
 sns.set_style("whitegrid")
 
 data_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data'
+fig_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/figures'
 df = pd.read_csv(join(data_dir, 'iq+brain+demo.csv'), index_col=0, header=0)
 f_gender_df = pd.read_csv(join(data_dir, 'rescored_gender_identity_female.csv'), index_col=0, header=[0,1])
 m_gender_df = pd.read_csv(join(data_dir, 'rescored_gender_identity_male.csv'), index_col=0, header=[0,1])
@@ -56,9 +58,9 @@ kurtosis = pd.Series(df.kurtosis())
 variance = pd.Series(df.var())
 list_of_measures = [mean, median, sdev, variance, skew, kurtosis]
 
-descriptives = pd.concat(list_of_measures, axis=1, sort=False)
-descriptives = descriptives.rename({0:'mean', 1:'median', 2:'sdev', 3:'variance', 4:'skew', 5:'kurtosis'}, axis=1)
-descriptives.to_csv(join(data_dir, 'decriptives.csv'))
+#descriptives = pd.concat(list_of_measures, axis=1, sort=False)
+#descriptives = descriptives.rename({0:'mean', 1:'median', 2:'sdev', 3:'variance', 4:'skew', 5:'kurtosis'}, axis=1)
+#descriptives.to_csv(join(data_dir, 'decriptives.csv'))
 
 df_ladies = df[df['Sex'] == 'F']
 df_ladies = df_ladies.drop('Sex', axis=1)
@@ -80,6 +82,28 @@ f_gender_df['Masculinity'] = 6 - f_gender_df['2', 'GID Post']
 m_gender_df['Masculinity'] = m_gender_df['2', 'GID Post']
 df_ladies['Masculinity'] = f_gender_df['Masculinity']
 df_dudes['Masculinity'] = m_gender_df['Masculinity']
+
+print(df_dudes.index.shape[0] - df_dudes.dropna(how='all').index.shape[0], 'missing or {0}%'.format(np.round(((df_dudes.index.shape[0] - df_dudes.dropna(how='all').index.shape[0])/df_dudes.index.shape[0])*100, 2)))
+print(set(df_dudes.index) - set(df_dudes.dropna(how='all').index))
+print(df_ladies.index.shape[0] - df_ladies.dropna(how='all').index.shape[0], 'missing or {0}%'.format(np.round(((df_ladies.index.shape[0] - df_ladies.dropna(how='all').index.shape[0])/df_ladies.index.shape[0])*100, 2)))
+print(set(df_ladies.index) - set(df_ladies.dropna(how='all').index))
+
+#drop subjectss with no data
+df_dudes.dropna(how='all', inplace=True)
+df_ladies.dropna(how='all', inplace=True)
+
+#now see how many remaining are missing any data
+print(df_dudes.index.shape[0] - df_dudes.dropna(how='any').index.shape[0], 'missing or {0}%'.format(np.round(((df_dudes.index.shape[0] - df_dudes.dropna(how='any').index.shape[0])/df_dudes.index.shape[0])*100, 2)))
+print(set(df_dudes.index) - set(df_dudes.dropna(how='any').index))
+print(df_ladies.index.shape[0] - df_ladies.dropna(how='any').index.shape[0], 'missing or {0}%'.format(np.round(((df_ladies.index.shape[0] - df_ladies.dropna(how='any').index.shape[0])/df_ladies.index.shape[0])*100, 2)))
+print(set(df_ladies.index) - set(df_ladies.dropna(how='any').index))
+
+
+%matplotlib inline
+df_ladies.drop([('2', 'GIF1'), ('2', 'GIF2'), ('2', 'GIF3'), ('2', 'GIF4'), ('2', 'GIF5'), ('2', 'GIF6'), ('2', 'GIF7'), ('2', 'GIF8'), ('2', 'GIF9'), ('2', 'GIF10'), ('2', 'GIF11'), ('2', 'GIF12'), ('2', 'GIF13'), ('2', 'GIF14'), ('2', 'GIF15'), ('2', 'GIF16'),('2', 'GIF17'), ('2', 'GIF18'), ('2', 'GIF19'), ('2', 'GID Post')], axis=1, inplace=True)
+msno.matrix(df_ladies)
+df_dudes.drop([('2', 'GIM1'), ('2', 'GIM2'), ('2', 'GIM3'), ('2', 'GIM4'), ('2', 'GIM5'), ('2', 'GIM6'), ('2', 'GIM7'), ('2', 'GIM8'), ('2', 'GIM9'), ('2', 'GIM10'), ('2', 'GIM11'), ('2', 'GIM12'), ('2', 'GIM14'), ('2', 'GIM15'), ('2', 'GIM16'),('2', 'GIM17'), ('2', 'GIM18'), ('2', 'GIM19'), ('2', 'GID Post')], axis=1, inplace=True)
+msno.matrix(df_dudes)
 
 mean = pd.Series(df_ladies.mean())
 median = pd.Series(df_ladies.median())
@@ -120,13 +144,13 @@ brain = ['fc default mode-left central executive gen',
         'fc hippo-right central executive phy',
         'fc left central executive-right central executive gen',
         'fc left central executive-right central executive phy',
-        'global efficiency gen', 'global efficiency phy',
         'le default mode gen', 'le default mode phy',
         'le left central executive gen', 'le left central executive phy',
         'le right central executive gen', 'le right central executive phy']
 behav = ['Phy48Grade', 'Verbal Comprehension Sum_2','Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy']
-
+all_vars = brain + behav
 #compare brain measures in physics and general conditions, then separate male & female ppts and repeat
+#nix the whole-sample results, separate by sex the whole time
 pairs = {}
 
 pairs['dmn_rcen'] = ttest_rel(df['fc default mode-right central executive gen'], df['fc default mode-right central executive phy'])
@@ -180,12 +204,18 @@ paired_ttests.to_csv(join(data_dir, 'paired-ttests_brain.csv'))
 
 #now, compare male and female ppts on each brain measure
 sex_diff = {}
-#for key in df_ladies.keys():
-#    unequal_var = levene(df_ladies[key], df_dudes[key], center='mean')
-#    if unequal_var[1] < 0.05:
-#        sex_diff[key] = ttest_ind(df_ladies[key], df_dudes[key], equal_var=True)
-#    else:
-#        sex_diff[key] = ttest_ind(df_ladies[key], df_dudes[key], equal_var=False)
+for key in all_vars:
+    if normaltest(df_ladies[key], nan_policy='omit')[1] < 0.05 or normaltest(df_dudes[key], nan_policy='omit')[1] < 0.05:
+        print('mann whitney for {0}'.format(key))
+        sex_diff[key] = mannwhitneyu(df_ladies[key], df_dudes[key])
+    else:
+        print('ttest for {0}'.format(key))
+        unequal_var = levene(df_ladies[key], df_dudes[key], center='mean')
+        if unequal_var[1] < 0.05:
+            sex_diff[key] = ttest_ind(df_ladies[key], df_dudes[key], equal_var=True, nan_policy='omit')
+        else:
+            sex_diff[key] = ttest_ind(df_ladies[key], df_dudes[key], equal_var=False, nan_policy='omit')
+
 #should actually be using mannwhitneyu instead of ttest_ind
 keys = ['AgeOnScanDate','Phy48Grade','GPA.PreSem',
         'fc default mode-left central executive gen',
@@ -218,10 +248,8 @@ keys = ['AgeOnScanDate','Phy48Grade','GPA.PreSem',
                                              ('2', 'GID Post'),
                                                  'Masculinity']
 
-for key in keys:
-    sex_diff[key] = mannwhitneyu(df_ladies[key], df_dudes[key])
-
 sex_differences = pd.DataFrame.from_dict(sex_diff, orient='index')
+sex_differences
 sex_differences.to_csv(join(data_dir, 'sex_differences.csv'))
 
 all_gend = pd.concat([f_gender_df, m_gender_df], axis=0, sort=True)
@@ -234,27 +262,27 @@ big_df['sexXmasc'] = big_df['Masculinity'] * big_df['Female']
 big_df['const'] = 1
 
 behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
-         'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', 'Total', 'Mean Physics Retrieval Accuracy', 'Masculinity']
+         'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', ('2', 'GID Post'), 'Mean Physics Retrieval Accuracy', 'Masculinity']
 
 jili_sidak_mc(big_df[brain],0.05)
-jili_sidak_mc(df_dudes[behav],0.05)
-jili_sidak_mc(df_ladies[behav],0.05)
+jili_sidak_mc(df_dudes[brain],0.05)
+jili_sidak_mc(df_ladies[brain],0.05)
 
-scorrs = {}
+#nix whole-sample comparisons
+corr_diffs = {}
 for key in brain:
     for meas in behav:
         scorrs[key, meas] = spearmanr(big_df[key], big_df[meas], nan_policy='omit')
 all_corr = pd.DataFrame.from_dict(scorrs, orient='index')
-all_corr.to_csv(join(data_dir, 'corr_all_brain_meas.csv'))
+all_corr.to_csv(join(data_dir, 'pcorr_all_brain_meas.csv'))
 
 mcorrs = {}
 for key in brain:
     for meas in behav:
-        mcorrs[key, meas] = spearmanr(df_dudes[key], df_dudes[meas], nan_policy='omit')
-
+        mcorrs[key, meas] = spearmanr(df_dudes[key], df_dudes[meas])
+dude_corr = df_dudes.corr('spearman')
 male_corr = pd.DataFrame.from_dict(mcorrs, orient='index')
-male_corr.min()
-male_corr.to_csv(join(data_dir, 'corr_male_brain_meas.csv'))
+male_corr.to_csv(join(data_dir, 'pcorr_male_brain_meas.csv'))
 
 fcorrs = {}
 for key in brain:
@@ -262,23 +290,37 @@ for key in brain:
         fcorrs[key, meas] = spearmanr(df_ladies[key], df_ladies[meas], nan_policy='omit')
 
 female_corr = pd.DataFrame.from_dict(fcorrs, orient='index')
+lady_corr = df_ladies.corr('spearman')
 female_corr.min()
 female_corr.to_csv(join(data_dir, 'corr_female_brain_meas.csv'))
 
-spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Physics Retrieval Accuracy'].dropna())
-spearmanr(df_dudes['Total'].dropna(), df_dudes['Mean Physics Retrieval Accuracy'].dropna())
-spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Correct RT'].dropna())
-spearmanr(df_dudes['Total'], df_dudes['Mean Correct RT'], nan_policy='omit')
-spearmanr(df_ladies['Total'].dropna(), df_ladies['Mean Incorrect RT'].dropna())
-spearmanr(df_dudes['Total'], df_dudes['Mean Incorrect RT'], nan_policy='omit')
+#now test for sex differences in relationships between brain, behavior
+corr_sex_diff = {}
+
+m_subj = df_dudes[meas].dropna().index
+f_subj = df_ladies[meas].dropna().index
+
+for key in brain:
+    for meas in behav:
+        z1 = np.arctanh(lady_corr[key][meas])
+        z2 = np.arctanh(dude_corr[key][meas])
+
+        Zobserved = (z1 - z2) / np.sqrt((1 / (len(m_subj) - 3)) + (1 / (len(f_subj) - 3)))
+        print('Difference in corr {0} x {1}, female - male: z = {1}, p = {2}'.format(key, meas, Zobserved, norm.sf(abs(Zobserved))*2))
+        corr_sex_diff[key,meas] = [Zobserved, norm.sf(abs(Zobserved))*2]
+
+sex_diff_corrs = pd.DataFrame(corr_sex_diff).T
+sex_diff_corrs.rename({0: 'Z_diff', 1: 'P(Z_diff)'}, axis=1, inplace=True)
+sex_diff_corrs.to_csv(join(data_dir, 'between_sex_correlation_differences.csv'))
 
 f_gid_behav = {}
 m_gid_behav = {}
 gid_behav = {}
+
 for key in behav:
-    f_gid_behav[key] = spearmanr(df_ladies['Total'], df_ladies[key], nan_policy='omit')
-    m_gid_behav[key] = spearmanr(df_dudes['Total'], df_dudes[key], nan_policy='omit')
-    gid_behav[key] = spearmanr(big_df['Total'], big_df[key], nan_policy='omit')
+    f_gid_behav[key] = spearmanr(df_ladies[('2', 'GID Post')], df_ladies[key], nan_policy='omit')
+    m_gid_behav[key] = spearmanr(df_dudes[('2', 'GID Post')], df_dudes[key], nan_policy='omit')
+    #gid_behav[key] = spearmanr(big_df[('2', 'GID Post')], big_df[key], nan_policy='omit')
 
 f_gid_behav_corr = pd.DataFrame.from_dict(f_gid_behav, orient='index')
 f_gid_behav_corr.to_csv(join(data_dir, 'corr_female_gid_meas.csv'))
@@ -287,7 +329,66 @@ m_gid_behav_corr.to_csv(join(data_dir, 'corr_male_gid_meas.csv'))
 gid_behav_corr = pd.DataFrame.from_dict(gid_behav, orient='index')
 gid_behav_corr.to_csv(join(data_dir, 'corr_gid_meas.csv'))
 
-########Now for some regressions!########
+########Mediation models & regressions!########
+df_dudes.rename({'Full Scale IQ_2': 'IQ', 'le left central executive phy': 'le-rCEN'}, axis=1, inplace=True)
+df_dudes.rename({'Full Scale IQ_2': 'IQ', 'le-rCEN': 'le_rCEN'}, axis=1, inplace=True)
+
+no_na_dudes = df_dudes[['IQ', 'le_rCEN', 'Phy48Grade', 'GIDPost']].dropna()
+
+df_ladies.rename({'Full Scale IQ_2': 'IQ', 'le left central executive phy': 'le-rCEN'}, axis=1, inplace=True)
+df_ladies.rename({'Full Scale IQ_2': 'IQ', 'le-rCEN': 'le_rCEN'}, axis=1, inplace=True)
+df_ladies.rename({('2', 'GID Post'): 'GIDPost'}, axis=1, inplace=True)
+
+big_df.rename({('2', 'GID Post'): 'GIDPost'}, axis=1, inplace=True)
+
+
+import statsmodels.api as sm
+from statsmodels.stats.mediation import Mediation, MediationResults
+
+outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + IQ",
+                                     no_na_dudes)
+mediator_model = sm.OLS.from_formula("IQ ~ le_rCEN", no_na_dudes)
+med = Mediation(outcome_model, mediator_model, "le_rCEN", "IQ").fit()
+med.summary(alpha=0.01)
+
+outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + GIDPost",
+                                     no_na_dudes)
+mediator_model = sm.OLS.from_formula("GIDPost ~ le_rCEN", no_na_dudes)
+med = Mediation(outcome_model, mediator_model, "le_rCEN", "GIDPost").fit()
+med.summary(alpha=0.01)
+
+#average causal mediation effect (ACME) = a*b = c - c'
+#average direct effect (ADE) = c'
+#total effect = a*b + c' = c
+df_ladies['HcDMN_phy_minus_gen'] = df_ladies['fc hippo-default mode phy'] - df_ladies['fc hippo-default mode gen']
+
+spearmanr(df_ladies['HcDMN_phy_minus_gen'], df_ladies['GIDPost'], nan_policy='omit')
+
+df_dudes['lCEN_DMN_gen_minus_phy'] = df_dudes['fc default mode-right central executive gen'] - df_dudes['fc default mode-right central executive phy']
+df_dudes['lCEN_rCEN_gen_minus_phy'] = df_dudes['fc left central executive-right central executive gen'] - df_dudes['fc left central executive-right central executive phy']
+spearmanr(df_dudes['lCEN_DMN_gen_minus_phy'], df_dudes['GIDPost'], nan_policy='omit')
+spearmanr(df_dudes['lCEN_rCEN_gen_minus_phy'], df_dudes['GIDPost'], nan_policy='omit')
+
+hustle = sns.husl_palette(8)
+hustler = sns.husl_palette(8, h=.8)
+sns.set_palette(hustler)
+g = sns.lmplot('GIDPost', 'IQ', data=df_dudes, fit_reg=True)
+g.savefig(join(fig_dir, 'male-iq-by-gender.png'), dpi=300)
+
+g = sns.lmplot('GIDPost', 'Verbal Comprehension Sum_2', data=df_dudes, fit_reg=True)
+g.savefig(join(fig_dir, 'male-vciq-by-gender.png'), dpi=300)
+
+hustler_desat = sns.husl_palette(8, h=.8, s=0.5)
+sex_cmap = [hustle[0], hustler[0]]
+
+g = sns.lmplot('GIDPost', 'Mean Physics Retrieval Accuracy', data=df_dudes, fit_reg=True)
+g.savefig(join(fig_dir, 'male-phy-acc-by-gender.png'), dpi=300)
+
+big_df.keys()
+sns.set_palette(sex_cmap)
+g = sns.lmplot('Total', 'fc default mode-right central executive phy', data=big_df, fit_reg=True, hue='Sex')
+
+g.savefig(join(fig_dir, 'dmn-lcen-by-gender_sexdiff.png'), dpi=300)
 
 conn = ['fc default mode-left central executive gen',
        'fc default mode-left central executive phy',
@@ -332,59 +433,3 @@ for brain_var in brain:
     iq_params[brain_var] = model.params
     iq_pvals[brain_var] = model.pvalues
 iq_summary.min()
-
-#what about sex and gender?
-sg_summary = pd.DataFrame(columns=['BIC', 'F', 'p(F)', 'df_model', 'R^2'], index=brain)
-sg_pvals = {}
-sg_params = {}
-
-no_missing_gender = big_df
-no_missing_gender.drop(335, axis=0, inplace=True)
-no_missing_gender.drop(344, axis=0, inplace=True)
-no_missing_gender.drop(465, axis=0, inplace=True)
-no_missing_gender.drop(587, axis=0, inplace=True)
-
-for brain_var in brain:
-    #print('******************************{0}********************************'.format(brain_var))
-    y = no_missing_gender.loc[:, brain_var].dropna()
-    X = no_missing_gender.loc[:, sex_gend].dropna()
-    X = sm.add_constant(X)
-    model = sm.OLS(y, X).fit()
-    #res = model.resid # residuals
-    #fig = sm.qqplot(res)
-    #plt.show()
-    #print(model.summary())
-    sg_summary.at[brain_var,'BIC'] = model.bic
-    sg_summary.at[brain_var,'F'] = model.fvalue
-    sg_summary.at[brain_var,'df_model'] = model.df_model
-    sg_summary.at[brain_var,'p(F)'] = model.f_pvalue
-    sg_summary.at[brain_var,'R^2'] = model.rsquared
-
-    sg_params[brain_var] = model.params
-    sg_pvals[brain_var] = model.pvalues
-sg_pvals
-
-#how do brain + iq + gender predict academic performance
-ac_summary = pd.DataFrame(columns=['BIC', 'F', 'p(F)', 'df_model', 'R^2'], index=brain)
-ac_pvals = {}
-ac_params = {}
-
-
-for brain_var in brain:
-    vars = list(set(demo_iq)) + [brain_var]
-    #vars += [brain_var]
-    #print('******************************{0}********************************'.format(brain_var))
-    y = big_df.loc[:, 'Phy48Grade'].dropna()
-    X = big_df.loc[:, vars].dropna()
-    X = sm.add_constant(X)
-    model = sm.OLS(y, X).fit()
-    #print(model.summary())
-    ac_summary.at[brain_var,'BIC'] = model.bic
-    ac_summary.at[brain_var,'F'] = model.fvalue
-    ac_summary.at[brain_var,'df_model'] = model.df_model
-    ac_summary.at[brain_var,'p(F)'] = model.f_pvalue
-    ac_summary.at[brain_var,'R^2'] = model.rsquared
-
-    ac_params[brain_var] = model.params
-    ac_pvals[brain_var] = model.pvalues
-ac_summary.min()
