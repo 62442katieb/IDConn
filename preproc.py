@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[4]:
-
-
 from __future__ import division
 from os.path import join, basename, exists
 from os import makedirs
@@ -29,7 +23,6 @@ import pandas as pd
 # ## Preprocessing
 # Largely following the Westphal et al. (2017) paper, but taking into account the things that Dani Bassett does in her papers (which I still need to look into).
 # ### Preprocessing methods per Westphal et al., 2017
-# Whole-brain MRI was administered on a 3.0 Tesla Siemens TIM Trio scanner at the UCLA Staglin Center for Cognitive Neuroscience. Functional images were ac- quired using a T2*-weighted echoplanar imaging sequence (TR   2.0 s; TE   30 ms; flip angle   75°; FOV   19.2 cm; voxel resolution   3.0   3.0   3.7 mm; 33 interleaved axial slices). The first three volumes of each 239-volume run were discarded to ensure T1 stabilization.<br>Preprocessing was done in SPM8.
 # 1. Slice timing correction
 # 2. Motion correction
 # 3. Unwarping
@@ -49,7 +42,7 @@ import pandas as pd
 # In[1]:
 
 
-def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, moco, mout, ):
+def preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco):
     from nipype.interfaces.fsl import MCFLIRT, FLIRT, FNIRT, ExtractROI, ApplyWarp, MotionOutliers, InvWarp, FAST
     #from nipype.interfaces.afni import AlignEpiAnatPy
     from nipype.interfaces.utility import Function
@@ -59,9 +52,10 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     #WRITE A DARA GRABBER
     def get_niftis(subject_id, data_dir, run):
         from os.path import join, exists
-        t1 = join(data_dir, subject_id, 'session-1', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
+        t1 = join(data_dir, subject_id, 'session-0', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
         #t1_brain_mask = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'fsl', 'anatomical-bet.nii.gz')
-        epi = join(data_dir, subject_id, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+        epi = join(data_dir, subject_id, 'session-0', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+        epi = join(data_dir, subject_id, 'session-0', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
         assert exists(t1), "t1 does not exist"
         assert exists(epi), "epi does not exist"
         standard = '/home/applications/fsl/5.0.8/data/standard/MNI152_T1_2mm.nii.gz'
@@ -82,7 +76,7 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     confound_file = join(sink_dir, subject,'{0}-{1}_retr-confounds.txt'.format(subject, run))
 
     #run motion correction if indicated
-    if motion == True:
+    if moco == True:
         mcflirt = MCFLIRT(ref_vol=144, save_plots=True, output_type='NIFTI_GZ')
         mcflirt.inputs.in_file = grabber.outputs.epi
         #mcflirt.inputs.in_file = join(data_dir, subject, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
@@ -91,6 +85,7 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
         motion = np.genfromtxt(flirty.outputs.par_file)
     else:
         print "no moco needed"
+        motion = 0
     #motion outliers
     try:
         mout = MotionOutliers(metric='fd', threshold=motion_thresh)
@@ -109,7 +104,7 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     #concatenate motion parameters and motion outliers to form confounds file
 
     #outliers = outliers.reshape((outliers.shape[0],1))
-    conf = np.concatenate((motion, outliers), axis=1)
+    conf = outliers
     np.savetxt(confound_file, conf, delimiter=',')
 
     #extract an example volume for normalization
@@ -118,17 +113,10 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     ex_fun.inputs.roi_file = join(sink_dir, subject,'{0}-{1}_retr-example_func.nii.gz'.format(subject, run))
     fun = ex_fun.run()
 
-    #need white matter map for BBR, but I think you need it for the reference image
-    #so if I wanted to do BBR, I'd have to reg EPI to T1 and then invert the xfm
-    #segment = FAST(output_biascorrected=True, output_biasfield=False, segments=True, probability_maps=False)
-    #segment.inputs.out_basename = join(data_dir, subject,'session-1', 'retr', 'mni', 'fast')
-    #segment.inputs.in_files = grabber.outputs.t1
-    #faster = segment.run()
-
     #two-step normalization using flirt and fnirt, outputting qa pix
     flit = FLIRT(cost_func="corratio", dof=12)
     reg_func = flit.run(reference=fun.outputs.roi_file, in_file=grabber.outputs.t1, searchr_x=[-180,180], searchr_y=[-180,180],
-                        out_file=join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.nii.gz'.format(subject, run)),
+                        out_file=join(sink_dir, subject, '{0}-{1}_t1-flirt-retr-.nii.gz'.format(subject, run)),
                         out_matrix_file = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.mat'.format(subject, run)))
     reg_mni = flit.run(reference=grabber.outputs.t1, in_file=grabber.outputs.standard, searchr_y=[-180,180], searchr_z=[-180,180],
                         out_file=join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.nii.gz'.format(subject, run)),
@@ -161,19 +149,19 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     display.close()
 
     xfmd_ntwks = []
-    for i in np.arange(0, len(masks)):
+    for key in masks.keys():
         #warp takes us from mni to t1, postmat
         warp = ApplyWarp(interp="nn", abswarp=True)
-        warp.inputs.in_file = masks[i]
+        warp.inputs.in_file = masks[key]
         warp.inputs.ref_file = fun.outputs.roi_file
         warp.inputs.field_file = reg2.outputs.field_file
         warp.inputs.postmat = reg_func.outputs.out_matrix_file
         warp.inputs.premat = reg_mni.outputs.out_matrix_file
-        warp.inputs.out_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, mask_names[i]))
+        warp.inputs.out_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, key))
         net_warp = warp.run()
         xfmd_ntwks.append(net_warp.outputs.out_file)
 
-        qa_file = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, mask_names[i]))
+        qa_file = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, key))
 
         display = plotting.plot_roi(net_warp, bg_img=fun.outputs.roi_file,
                                     colorbar=True, vmin=0, vmax=18,
@@ -184,11 +172,9 @@ def preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh, 
     return flirty.outputs.out_file, confound_file
 
 #choose your atlas and either fetch it from Nilearn using one of the the 'datasets' functions
-laird_2011_icns = '/home/data/nbc/physics-learning/retrieval-graphtheory/18-networks-5.14-mni_2mm.nii.gz'
-#laird_2011_icns = '/Users/Katie/Dropbox/Projects/physics-retrieval/18-networks-5.14.nii.gz'
-harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
-masks = [laird_2011_icns, harvox_hippo]
-mask_names = ['18_icn', 'hippo']
+shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
+craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
+masks = {'shen2015': shen, 'craddock2012': craddock}
 
 
 # In[ ]:
@@ -221,7 +207,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
 subjects_re = {'217': [0], '334': [1], '335': [1], '453': [1], '463': [0,1], '618': [1], '626': [0]}
 
 data_dir = '/home/data/nbc/physics-learning/data/pre-processed'
-sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
+sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre'
 #sink_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data/out'
 
 motion_thresh=0.9
@@ -229,12 +215,13 @@ motion_thresh=0.9
 runs = [0, 1]
 
 #run preprocessing once per run per subject
-for subject in subjects_re.keys():
-    for run in subjects_re[subject]:
+#for subject in subjects_re.keys():
+for subject in subjects:
+    for run in runs:
         if not exists(join(sink_dir, subject,)):
             makedirs(join(sink_dir, subject,))
         #xfm laird 2011 maps to subject's epi space & define masker
         try:
-            [epi, confounds] = preproc(data_dir, sink_dir, subject, run, masks, mask_names, motion_thresh)
+            preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco=True)
         except Exception as e:
             print 'Error with {0}, run {1}, because {2}.'.format(subject, run, e)
