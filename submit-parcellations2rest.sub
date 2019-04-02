@@ -1,0 +1,29 @@
+#!/bin/bash
+#---Number of core
+#BSUB -n 1
+
+#---Job's name in LSF system
+#BSUB -J phys-learn-retr-parcellations2rest
+
+#---Error file
+#BSUB -eo /home/kbott006/physics-retrieval/idconn-retrieval/parcellations2rest-error
+
+#---Output file
+#BSUB -oo /home/kbott006/physics-retrieval/idconn-retrieval/parcellations2rest-output
+
+#---LSF Queue name
+#BSUB -q PQ_nbc
+
+##########################################################
+# Setup envrionmental variable.
+##########################################################
+export NPROCS=`echo $LSB_HOSTS | wc -w`
+export OMP_NUM_THREADS=$NPROCS
+
+. $MODULESHOME/../global/profile.modules
+module load anaconda/2.7.13
+module load fsl
+##########################################################
+##########################################################
+
+python parcellations-to-rest.py
