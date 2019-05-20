@@ -12,7 +12,7 @@ from scipy.stats import pearsonr
 import nipype.pipeline.engine as pe
 import nipype.interfaces.io as nio
 import nipype.interfaces.utility as util
-from nipype.interfaces.fsl import InvWarp
+from nipype.interfaces.fsl import InvWarp, ApplyWarp
 
 import bct
 import json
@@ -42,7 +42,7 @@ import pandas as pd
 # In[1]:
 
 
-def preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco):
+def preproc(data_dir, sink_dir, subject, task, session, run, masks, motion_thresh, moco):
     from nipype.interfaces.fsl import MCFLIRT, FLIRT, FNIRT, ExtractROI, ApplyWarp, MotionOutliers, InvWarp, FAST
     #from nipype.interfaces.afni import AlignEpiAnatPy
     from nipype.interfaces.utility import Function
@@ -50,54 +50,58 @@ def preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco):
     from nilearn import input_data
 
     #WRITE A DARA GRABBER
-    def get_niftis(subject_id, data_dir, run):
+    def get_niftis(subject_id, data_dir, task, run, session):
         from os.path import join, exists
-        t1 = join(data_dir, subject_id, 'session-0', 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
-        #t1_brain_mask = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'fsl', 'anatomical-bet.nii.gz')
-        epi = join(data_dir, subject_id, 'session-0', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
-        epi = join(data_dir, subject_id, 'session-0', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
+        t1 = join(data_dir, subject_id, 'session-{0}'.format(session), 'anatomical', 'anatomical-0', 'anatomical.nii.gz')
+        t1_brain_mask = join(data_dir, subject, 'session-1', 'anatomical', 'anatomical-0', 'fsl', 'anatomical-bet.nii.gz')
+        epi = join(data_dir, subject_id, 'session-{0}'.format(session), task, '{0}-{1}'.format(task, run), '{0}.nii.gz'.format(task))
+        if exists()
         assert exists(t1), "t1 does not exist"
         assert exists(epi), "epi does not exist"
         standard = '/home/applications/fsl/5.0.8/data/standard/MNI152_T1_2mm.nii.gz'
-        return t1, epi, standard
+        return t1, epi, standard, t1_brain_mask
 
-    data = Function(function=get_niftis, input_names=["subject_id", "data_dir", "run"],
+    data = Function(function=get_niftis, input_names=["subject_id", "data_dir", "task", "run", "session"],
                             output_names=["t1", "epi", "standard"])
     data.inputs.data_dir = data_dir
     data.inputs.subject_id = subject
     data.inputs.run = run
+    data.inputs.session = session
+    data.inputs.task = task
     grabber = data.run()
 
     #reg_dir = '/home/data/nbc/physics-learning/data/first-level/{0}/session-1/retr/retr-{1}/retr-5mm.feat/reg'.format(subject, run)
-
-    qa1 = join(sink_dir, 'qa', '{0}-{1}_t1_flirt.png'.format(subject, run))
-    qa2 = join(sink_dir, 'qa', '{0}-{1}_mni_flirt.png'.format(subject, run))
-    qa3 = join(sink_dir, 'qa', '{0}-{1}_mni_fnirt.png'.format(subject, run))
-    confound_file = join(sink_dir, subject,'{0}-{1}_retr-confounds.txt'.format(subject, run))
+    #set output paths for quality assurance pngs
+    qa1 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_t1_flirt.png'.format(subject, session, task, run))
+    qa2 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_mni_flirt.png'.format(subject, session, task, run))
+    qa3 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_mni_fnirt.png'.format(subject, session, task, run))
+    confound_file = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}_confounds.txt'.format(subject, session, task, run))
 
     #run motion correction if indicated
     if moco == True:
         mcflirt = MCFLIRT(ref_vol=144, save_plots=True, output_type='NIFTI_GZ')
         mcflirt.inputs.in_file = grabber.outputs.epi
         #mcflirt.inputs.in_file = join(data_dir, subject, 'session-1', 'retr', 'retr-{0}'.format(run), 'retr.nii.gz')
-        mcflirt.inputs.out_file = join(sink_dir, subject,'{0}-{1}_retr-mcf.nii.gz'.format(subject, run))
+        mcflirt.inputs.out_file = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}_mcf.nii.gz'.format(subject, session, task, run))
         flirty = mcflirt.run()
         motion = np.genfromtxt(flirty.outputs.par_file)
     else:
         print "no moco needed"
         motion = 0
-    #motion outliers
+
+    #calculate motion outliers
     try:
         mout = MotionOutliers(metric='fd', threshold=motion_thresh)
         mout.inputs.in_file = grabber.outputs.epi
-        mout.inputs.out_file = join(sink_dir, subject, '{0}-{1}_retr-fd_gt_09mm'.format(subject, run))
-        mout.inputs.out_metric_plot = join(sink_dir, subject, '{0}-{1}_retr-metrics.png'.format(subject, run))
-        mout.inputs.out_metric_values = join(sink_dir, subject,'{0}-{1}_retr-fd.txt'.format(subject, run))
+        mout.inputs.out_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_fd-gt-{3}mm'.format(subject, session, task, run, motion_thresh))
+        mout.inputs.out_metric_plot = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_metrics.png'.format(subject, session, task, run))
+        mout.inputs.out_metric_values = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}_fd.txt'.format(subject, session, task, run))
         moutliers = mout.run()
         outliers = np.genfromtxt(moutliers.outputs.out_file)
     except Exception as e:
         print e
         outliers = np.genfromtxt(mout.inputs.out_metric_values)
+        #set everything above the threshold to 1 and everything below to 0
         outliers[outliers > motion_thresh] = 1
         outliers[outliers < motion_thresh] = 0
 
@@ -110,60 +114,67 @@ def preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco):
     #extract an example volume for normalization
     ex_fun = ExtractROI(t_min=144, t_size=1)
     ex_fun.inputs.in_file = flirty.outputs.out_file
-    ex_fun.inputs.roi_file = join(sink_dir, subject,'{0}-{1}_retr-example_func.nii.gz'.format(subject, run))
+    ex_fun.inputs.roi_file = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}-example_func.nii.gz'.format(subject, session, task, run))
     fun = ex_fun.run()
 
-    #two-step normalization using flirt and fnirt, outputting qa pix
-    flit = FLIRT(cost_func="corratio", dof=12)
-    reg_func = flit.run(reference=fun.outputs.roi_file, in_file=grabber.outputs.t1, searchr_x=[-180,180], searchr_y=[-180,180],
-                        out_file=join(sink_dir, subject, '{0}-{1}_t1-flirt-retr-.nii.gz'.format(subject, run)),
-                        out_matrix_file = join(sink_dir, subject, '{0}-{1}_t1-flirt-retr.mat'.format(subject, run)))
-    reg_mni = flit.run(reference=grabber.outputs.t1, in_file=grabber.outputs.standard, searchr_y=[-180,180], searchr_z=[-180,180],
-                        out_file=join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.nii.gz'.format(subject, run)),
-                        out_matrix_file = join(sink_dir, subject, '{0}-{1}_mni-flirt-t1.mat'.format(subject, run)))
 
-    #plot_stat_map(aligner.outputs.out_file, bg_img=fun.outputs.roi_file, colorbar=True, draw_cross=False, threshold=1000, output_file=qa1a, dim=-2)
-    display = plot_anat(fun.outputs.roi_file, dim=-1)
-    display.add_edges(reg_func.outputs.out_file)
-    display.savefig(qa1, dpi=300)
-    display.close()
 
-    display = plot_anat(grabber.outputs.t1, dim=-1)
-    display.add_edges(reg_mni.outputs.out_file)
-    display.savefig(qa2, dpi=300)
-    display.close()
+    warp = ApplyWarp(interp="nn", abswarp=True)
 
-    perf = FNIRT(output_type='NIFTI_GZ')
-    perf.inputs.warped_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1.nii.gz'.format(subject, run))
-    perf.inputs.affine_file = reg_mni.outputs.out_matrix_file
-    perf.inputs.in_file = grabber.outputs.standard
-    perf.inputs.subsampling_scheme = [8,4,2,2]
-    perf.inputs.fieldcoeff_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1-warpcoef.nii.gz'.format(subject, run))
-    perf.inputs.field_file = join(sink_dir, subject, '{0}-{1}_mni-fnirt-t1-warp.nii.gz'.format(subject, run))
-    perf.inputs.ref_file = grabber.outputs.t1
-    reg2 = perf.run()
-    #plot fnirted MNI overlaid on example func
-    display = plot_anat(grabber.outputs.t1, dim=-1)
-    display.add_edges(reg2.outputs.warped_file)
-    display.savefig(qa3, dpi=300)
-    display.close()
+    if not exists('/home/data/nbc/physics-learning/data/first-level/{0}/session-{1}/{2}/{2}-{3}/{2}-5mm.feat/reg/example_func2standard_warp.nii.gz'.format(subject, session, task, run))
+        #two-step normalization using flirt and fnirt, outputting qa pix
+        flit = FLIRT(cost_func="corratio", dof=12)
+        reg_func = flit.run(reference=fun.outputs.roi_file, in_file=grabber.outputs.t1, searchr_x=[-180,180], searchr_y=[-180,180],
+                            out_file=join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_t1-flirt.nii.gz'.format(subject, session, task, run)),
+                            out_matrix_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_t1-flirt.mat'.format(subject, session, task, run)))
+        reg_mni = flit.run(reference=grabber.outputs.t1, in_file=grabber.outputs.standard, searchr_y=[-180,180], searchr_z=[-180,180],
+                            out_file=join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-flirt-t1.nii.gz'.format(subject, session, task, run)),
+                            out_matrix_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-flirt-t1.mat'.format(subject, session, task, run)))
 
-    xfmd_ntwks = []
+        #plot_stat_map(aligner.outputs.out_file, bg_img=fun.outputs.roi_file, colorbar=True, draw_cross=False, threshold=1000, output_file=qa1a, dim=-2)
+        display = plot_anat(fun.outputs.roi_file, dim=-1)
+        display.add_edges(reg_func.outputs.out_file)
+        display.savefig(qa1, dpi=300)
+        display.close()
+
+        display = plot_anat(grabber.outputs.t1, dim=-1)
+        display.add_edges(reg_mni.outputs.out_file)
+        display.savefig(qa2, dpi=300)
+        display.close()
+
+        perf = FNIRT(output_type='NIFTI_GZ')
+        perf.inputs.warped_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-fnirt-t1.nii.gz'.format(subject, session, task, run))
+        perf.inputs.affine_file = reg_mni.outputs.out_matrix_file
+        perf.inputs.in_file = grabber.outputs.standard
+        perf.inputs.subsampling_scheme = [8,4,2,2]
+        perf.inputs.fieldcoeff_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-fnirt-t1-warpcoeff.nii.gz'.format(subject, session, task, run))
+        perf.inputs.field_file = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-fnirt-t1-warp.nii.gz'.format(subject, session, task, run))
+        perf.inputs.ref_file = grabber.outputs.t1
+        reg2 = perf.run()
+        warp.inputs.field_file = reg2.outputs.field_file
+        #plot fnirted MNI overlaid on example func
+        display = plot_anat(grabber.outputs.t1, dim=-1)
+        display.add_edges(reg2.outputs.warped_file)
+        display.savefig(qa3, dpi=300)
+        display.close()
+    else:
+        warpspeed = InvWarp(output_type='NIFTI_GZ')
+        warpspeed.inputs.warp = '/home/data/nbc/physics-learning/data/first-level/{0}/session-{1}/{2}/{2}-{3}/{2}-5mm.feat/reg/example_func2standard_warp.nii.gz'.format(subject, session, task, run)
+        warpspeed.inputs.reference = fun.outputs.roi_file
+        warpspeed.inputs.inverse_warp = join(sink_dir, subject, '{0}-session-{1}_{2}-{3}_mni-fnirt-t1-warp.nii.gz'.format(subject, session, task, run))
+        mni2epiwarp = warpspeed.run()
+        warp.inputs.field_file = mni2epiwarp.outputs.inverse_warp
+
     for key in masks.keys():
-        #warp takes us from mni to t1, postmat
-        warp = ApplyWarp(interp="nn", abswarp=True)
+        #warp takes us from mni to epi
         warp.inputs.in_file = masks[key]
         warp.inputs.ref_file = fun.outputs.roi_file
-        warp.inputs.field_file = reg2.outputs.field_file
-        warp.inputs.postmat = reg_func.outputs.out_matrix_file
-        warp.inputs.premat = reg_mni.outputs.out_matrix_file
-        warp.inputs.out_file = join(sink_dir, subject,'{0}-{1}_{2}_retr.nii.gz'.format(subject, run, key))
+        warp.inputs.out_file = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}_{4}.nii.gz'.format(subject, session, task, run, key))
         net_warp = warp.run()
-        xfmd_ntwks.append(net_warp.outputs.out_file)
 
-        qa_file = join(sink_dir, 'qa', '{0}-{1}_qa_{2}.png'.format(subject, run, key))
+        qa_file = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_qa_{4}.png'.format(subject, session, task, run, key))
 
-        display = plotting.plot_roi(net_warp, bg_img=fun.outputs.roi_file,
+        display = plotting.plot_roi(net_warp.outputs.out_file, bg_img=fun.outputs.roi_file,
                                     colorbar=True, vmin=0, vmax=18,
                                     draw_cross=False)
         display.savefig(qa_file, dpi=300)
@@ -204,7 +215,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
 #subjects = ['101']
 
 #subjects for whom preproc didn't run because of motion reasons
-subjects_re = {'217': [0], '334': [1], '335': [1], '453': [1], '463': [0,1], '618': [1], '626': [0]}
+#subjects_re = {'217': [0], '334': [1], '335': [1], '453': [1], '463': [0,1], '618': [1], '626': [0]}
 
 data_dir = '/home/data/nbc/physics-learning/data/pre-processed'
 sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre'
@@ -213,15 +224,21 @@ sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre'
 motion_thresh=0.9
 
 runs = [0, 1]
+sessions = [0,1]
 
 #run preprocessing once per run per subject
 #for subject in subjects_re.keys():
 for subject in subjects:
+    if not exists(join(sink_dir, subject)):
+        makedirs(join(sink_dir, subject))
     for run in runs:
-        if not exists(join(sink_dir, subject,)):
-            makedirs(join(sink_dir, subject,))
-        #xfm laird 2011 maps to subject's epi space & define masker
-        try:
-            preproc(data_dir, sink_dir, subject, run, masks, motion_thresh, moco=True)
-        except Exception as e:
-            print 'Error with {0}, run {1}, because {2}.'.format(subject, run, e)
+        task = 'reas'
+        for session in sessions:
+            #xfm laird 2011 maps to subject's epi space & define masker
+            try:
+                preproc(data_dir, sink_dir, subject, task, session, run, masks, motion_thresh, moco=True)
+            except Exception as e:
+                print 'Error with {0}, session {1}, {2} task, run {3}, because {4}.'.format(subject, session, task, run, e)
+    try:
+        task = 'retr'
+        preproc(data_dir, sink_dir, subject, task, 0, runs, masks, motion_thresh, moco=True)
