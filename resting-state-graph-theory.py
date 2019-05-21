@@ -4,8 +4,9 @@ from os import makedirs
 from os.path import join, exists
 from nilearn.input_data import NiftiLabelsMasker
 from nilearn.connectome import ConnectivityMeasure
+from nilearn.plotting import plot_anat
 import bct
-print(pd.__version__)
+from nipype.interfaces.fsl import InvWarp, ApplyWarp
 
 subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213',
             '214', '215', '216', '217', '218', '219', '320', '321', '322', '323',
@@ -20,19 +21,22 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
+#subjects = ['101', '102']
 
-data_dir = '/home/data/nbc/physics-learning/anxiety-physics'
-sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory'
+data_dir = '/home/data/nbc/physics-learning/data/pre-processed/'
+sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
 
 shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = {'shen2015': shen, 'craddock2012': craddock}
 
-sessions = ['pre', 'post']
+sessions = [0,1]
+sesh = ['pre', 'post']
 
-#shen_masker = NiftiLabelsMasker(shen, background_label=0, standardize=True, detrend=True,t_r=3.)
-#craddock_masker = NiftiLabelsMasker(shen, background_label=0, standardize=True, detrend=True,t_r=3.)
-#correlation_measure = ConnectivityMeasure(kind='correlation')
+correlation_measure = ConnectivityMeasure(kind='correlation')
+
+invert = InvWarp()
+warpspeed = ApplyWarp(interp='nn')
 
 index = pd.MultiIndex.from_product([subjects, sessions], names=['subject', 'session'])
 
@@ -41,18 +45,46 @@ df = pd.DataFrame(columns=['shen-efficiency', 'shen-charpath', 'shen-modularity'
 for subject in subjects:
     for session in sessions:
         try:
-            #confounds = join(data_dir, 'output', session, subject, '{0}_confounds.txt'.format(subject))
-            #epi_data = join(data_dir, session, '{0}_filtered_func_data_mni.nii.gz'.format(subject))
+            mni2epiwarp = join(sink_dir, sesh[session], subject, '{0}-session-{1}_rest_mni-fnirt-epi-warp.nii.gz'.format(subject, session))
 
-            #shen_ts = shen_masker.fit_transform(epi_data, confounds)
-            #shen_corrmat = correlation_measure.fit_transform([shen_ts])[0]
-            #np.savetxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_shen2015.csv'.format(subject)), shen_corrmat, delimiter=",")
-            shen_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_shen2015.csv'.format(subject)), delimiter=",")
+            #invert the epi-to-mni warpfield so you can run these analyses in native space
+            invert.inputs.warp = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat/reg/example_func2standard_warp.nii.gz')
+            invert.inputs.inverse_warp = mni2epiwarp
+            invert.inputs.reference = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat/reg/example_func.nii.gz')
+            inverted = invert.run()
 
-            #craddock_ts = craddock_masker.fit_transform(epi_data, confounds)
-            #craddock_corrmat = correlation_measure.fit_transform([craddock_ts])[0]
-            #np.savetxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_craddock2012.csv'.format(subject)), craddock_corrmat, delimiter=",")
-            craddock_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_craddock2012.csv'.format(subject)), delimiter=",")
+            warpspeed.inputs.ref_file = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat/reg/example_func.nii.gz')
+            warpspeed.inputs.field_file = inverted.outputs.inverse_warp
+
+            xfmd_masks = {}
+            for mask in masks.keys():
+                mask_nativespace = join(sink_dir, sesh[session], subject, '{0}-session-{1}_rest_{2}.nii.gz'.format(subject, session, mask))
+                warpspeed.inputs.in_file = masks[mask]
+                warpspeed.inputs.out_file = mask_nativespace
+                warped = warpspeed.run()
+                xfmd_masks[mask] = mask_nativespace
+
+
+                display = plot_anat(join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat/reg/example_func.nii.gz'), dim=-1)
+                display.add_edges(mask_nativespace)
+                display.savefig(join(sink_dir, 'qa', '{0}-session-{1}_rest_qa_{2}.png'.format(subject, session, mask)), dpi=300)
+                display.close()
+
+            shen_masker = NiftiLabelsMasker(xfmd_masks['shen2015'], background_label=0, standardize=True, detrend=True,t_r=3.)
+            craddock_masker = NiftiLabelsMasker(xfmd_masks['craddock2012'], background_label=0, standardize=True, detrend=True,t_r=3.)
+
+            confounds = '/home/data/nbc/physics-learning/anxiety-physics/output/{1}/{0}/{0}_confounds.txt'.format(subject, sesh[session])
+            epi_data = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat', 'filtered_func_data.nii.gz')
+
+            shen_ts = shen_masker.fit_transform(epi_data, confounds)
+            shen_corrmat = correlation_measure.fit_transform([shen_ts])[0]
+            np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_shen2015.csv'.format(subject, session)), shen_corrmat, delimiter=",")
+            #shen_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_shen2015.csv'.format(subject)), delimiter=",")
+
+            craddock_ts = craddock_masker.fit_transform(epi_data, confounds)
+            craddock_corrmat = correlation_measure.fit_transform([craddock_ts])[0]
+            np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_craddock2012.csv'.format(subject, session)), craddock_corrmat, delimiter=",")
+            #craddock_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_craddock2012.csv'.format(subject)), delimiter=",")
 
             ge_s = []
             ge_c = []
@@ -65,7 +97,6 @@ for subject in subjects:
                 shen_thresh = bct.threshold_proportional(shen_corrmat, p, copy=True)
                 craddock_thresh = bct.threshold_proportional(craddock_corrmat, p, copy=True)
                 #network measures of interest here
-
                 #global efficiency
                 ge = bct.efficiency_wei(shen_thresh)
                 ge_s.append(ge)
@@ -83,12 +114,12 @@ for subject in subjects:
                 md_s.append(md[1])
                 md = bct.modularity_louvain_und(craddock_thresh)
                 md_c.append(md[1])
-            df.loc[(int(subject), session), 'shen-efficiency'] = np.trapz(ge_s, dx=0.1)
-            df.loc[(int(subject), session), 'shen-charpath'] = np.trapz(cp_s, dx=0.1)
-            df.loc[(int(subject), session), 'shen-modularity'] = np.trapz(md_s, dx=0.1)
-            df.loc[(int(subject), session), 'craddock-efficiency'] = np.trapz(ge_c, dx=0.1)
-            df.loc[(int(subject), session), 'craddock-charpath'] = np.trapz(cp_c, dx=0.1)
-            df.loc[(int(subject), session), 'craddock-modularity'] = np.trapz(ge_c, dx=0.1)
+            df.at[(subject, session), 'shen-efficiency'] = np.trapz(ge_s, dx=0.1)
+            df.at[(subject, session), 'shen-charpath'] = np.trapz(cp_s, dx=0.1)
+            df.loc[(subject, session), 'shen-modularity'] = np.trapz(md_s, dx=0.1)
+            df.loc[(subject, session), 'craddock-efficiency'] = np.trapz(ge_c, dx=0.1)
+            df.loc[(subject, session), 'craddock-charpath'] = np.trapz(cp_c, dx=0.1)
+            df.loc[(subject, session), 'craddock-modularity'] = np.trapz(ge_c, dx=0.1)
             #df.to_csv(join(sink_dir, 'resting-state_graphtheory_shen+craddock.csv'), sep=',')
         except Exception as e:
             print(e, subject, session)
