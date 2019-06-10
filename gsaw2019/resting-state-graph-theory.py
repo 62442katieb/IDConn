@@ -21,6 +21,8 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
 
+subjects = ['101', '102']
+
 data_dir = '/home/data/nbc/physics-learning/data/pre-processed/'
 sink_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
 
@@ -28,7 +30,8 @@ shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = {'shen2015': shen, 'craddock2012': craddock}
 
-sessions = ['pre', 'post']
+sessions = [0,1]
+sesh = ['pre', 'post']
 
 correlation_measure = ConnectivityMeasure(kind='correlation')
 
@@ -42,7 +45,7 @@ df = pd.DataFrame(columns=['shen-efficiency', 'shen-charpath', 'shen-modularity'
 for subject in subjects:
     for session in sessions:
         try:
-            mni2epiwarp = join(sink_dir, subject, '{0}-session-{1}_rest_mni-fnirt-epi-warp.nii.gz'.format(subject, session))
+            mni2epiwarp = join(sink_dir, '{2}/{0}/{0}-session-{1}_rest_mni-fnirt-epi-warp.nii.gz'.format(subject, session, sesh[session]))
 
             #invert the epi-to-mni warpfield so you can run these analyses in native space
             invert.inputs.warp = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat/reg/example_func2standard_warp.nii.gz')
@@ -55,7 +58,7 @@ for subject in subjects:
 
             xfmd_masks = {}
             for mask in masks.keys():
-                mask_nativespace = join(sink_dir, subject, '{0}-session-{1}_rest_{2}.nii.gz'.format(subject, session, mask))
+                mask_nativespace = join(sink_dir, sesh[session], subject, '{0}-session-{1}_rest_{2}.nii.gz'.format(subject, session, mask))
                 warpspeed.inputs.in_file = masks[mask]
                 warpspeed.inputs.out_file = mask_nativespace
                 warped = warpspeed.run()
@@ -64,17 +67,17 @@ for subject in subjects:
             shen_masker = NiftiLabelsMasker(xfmd_masks['shen2015'], background_label=0, standardize=True, detrend=True,t_r=3.)
             craddock_masker = NiftiLabelsMasker(xfmd_masks['craddock2012'], background_label=0, standardize=True, detrend=True,t_r=3.)
 
-            confounds = '/home/data/nbc/physics-learning/anxiety-physics/output/{1}/{0}/{0}_confounds.txt'.format(subject, session))
-            epi_data = oin(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat', 'filtered_func_data.nii.gz')
+            confounds = '/home/data/nbc/physics-learning/anxiety-physics/output/{1}/{0}/{0}_confounds.txt'.format(subject, sesh[session])
+            epi_data = join(data_dir, subject, 'session-{0}'.format(session), 'resting-state/resting-state-0/endor1.feat', 'filtered_func_data.nii.gz')
 
             shen_ts = shen_masker.fit_transform(epi_data, confounds)
             shen_corrmat = correlation_measure.fit_transform([shen_ts])[0]
-            np.savetxt(join(sink_dir, session, subject, '{0}-session-{1}-rest_network_corrmat_shen2015.csv'.format(subject, session)), shen_corrmat, delimiter=",")
+            np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_shen2015.csv'.format(subject, session)), shen_corrmat, delimiter=",")
             #shen_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_shen2015.csv'.format(subject)), delimiter=",")
 
             craddock_ts = craddock_masker.fit_transform(epi_data, confounds)
             craddock_corrmat = correlation_measure.fit_transform([craddock_ts])[0]
-            np.savetxt(join(sink_dir, session, subject, '{0}-session-{1}-rest_network_corrmat_craddock2012.csv'.format(subject, session)), craddock_corrmat, delimiter=",")
+            np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_craddock2012.csv'.format(subject, session)), craddock_corrmat, delimiter=",")
             #craddock_corrmat = np.genfromtxt(join(sink_dir, session, 'resting-state', subject, '{0}_network_corrmat_craddock2012.csv'.format(subject)), delimiter=",")
 
             ge_s = []
