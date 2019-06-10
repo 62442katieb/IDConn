@@ -6,10 +6,10 @@
 #BSUB -J phys-learn-retr-preproc
 
 #---Error file
-#BSUB -eo /home/kbott006/physics-retrieval/idconn-retrieval/preprocmarch2019-error
+#BSUB -eo /home/kbott006/physics-retrieval/idconn-retrieval/preprocmay2019-error
 
 #---Output file
-#BSUB -oo /home/kbott006/physics-retrieval/idconn-retrieval/preprocmarch2019-output
+#BSUB -oo /home/kbott006/physics-retrieval/idconn-retrieval/preprocmay2019-output
 
 #---LSF Queue name
 #BSUB -q PQ_nbc
