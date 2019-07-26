@@ -7,17 +7,11 @@
 #BSUB -J {sub}
 
 #---Error file
-<<<<<<< HEAD
 #BSUB -eo /home/data/nbc/Sutherland_ACE/code/errorfiles/sub-{sub}-fmriprep
 
 #---Output file
 #BSUB -oo /home/data/nbc/Sutherland_ACE/code/outfiles/sub-{sub}-fmriprep
-=======
-#BSUB -eo /home/kbott006/physics-retrieval/errorfiles/sub-{sub}-fmriprep
 
-#---Output file
-#BSUB -oo /home/kbott006/physics-retrieval/outfiles/sub-{sub}-fmriprep
->>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
 
 #---LSF Queue name
 #BSUB -q PQ_nbc

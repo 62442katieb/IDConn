@@ -198,6 +198,7 @@ m_paired_tests = pd.DataFrame.from_dict(pairs, orient='index')
 m_paired_tests = m_paired_tests.stack()
 
 paired_ttests = pd.DataFrame({'all': paired_tests, 'female': f_paired_tests, 'male': m_paired_tests})
+
 paired_ttests = paired_ttests.unstack()
 
 paired_ttests.to_csv(join(data_dir, 'paired-ttests_brain.csv'))
@@ -205,6 +206,7 @@ paired_ttests.to_csv(join(data_dir, 'paired-ttests_brain.csv'))
 #now, compare male and female ppts on each brain measure
 sex_diff = {}
 for key in all_vars:
+
     if normaltest(df_f[key], nan_policy='omit')[1] < 0.05 or normaltest(df_m[key], nan_policy='omit')[1] < 0.05:
         print('mann whitney for {0}'.format(key))
         sex_diff[key] = mannwhitneyu(df_f[key], df_m[key])
@@ -215,6 +217,7 @@ for key in all_vars:
             sex_diff[key] = ttest_ind(df_f[key], df_m[key], equal_var=True, nan_policy='omit')
         else:
             sex_diff[key] = ttest_ind(df_f[key], df_m[key], equal_var=False, nan_policy='omit')
+
 
 #should actually be using mannwhitneyu instead of ttest_ind
 keys = ['AgeOnScanDate','Phy48Grade','GPA.PreSem',
@@ -265,8 +268,10 @@ behav = ['Phy48Grade', 'Verbal Comprehension Sum_2',
          'Perceptual Reasoning Sum_2', 'Full Scale IQ_2', ('2', 'GID Post'), 'Mean Physics Retrieval Accuracy', 'Masculinity']
 
 jili_sidak_mc(big_df[brain],0.05)
+
 jili_sidak_mc(df_m[brain],0.05)
 jili_sidak_mc(df_f[brain],0.05)
+
 
 #nix whole-sample comparisons
 corr_diffs = {}
@@ -279,23 +284,28 @@ all_corr.to_csv(join(data_dir, 'pcorr_all_brain_meas.csv'))
 mcorrs = {}
 for key in brain:
     for meas in behav:
+
         mcorrs[key, meas] = spearmanr(df_m[key], df_m[meas])
 m_corr = df_m.corr('spearman')
+
 male_corr = pd.DataFrame.from_dict(mcorrs, orient='index')
 male_corr.to_csv(join(data_dir, 'pcorr_male_brain_meas.csv'))
 
 fcorrs = {}
 for key in brain:
     for meas in behav:
+
         fcorrs[key, meas] = spearmanr(df_f[key], df_f[meas], nan_policy='omit')
 
 female_corr = pd.DataFrame.from_dict(fcorrs, orient='index')
 f_corr = df_f.corr('spearman')
+
 female_corr.min()
 female_corr.to_csv(join(data_dir, 'corr_female_brain_meas.csv'))
 
 #now test for sex differences in relationships between brain, behavior
 corr_sex_diff = {}
+
 
 m_subj = df_m[meas].dropna().index
 f_subj = df_f[meas].dropna().index
@@ -304,6 +314,7 @@ for key in brain:
     for meas in behav:
         z1 = np.arctanh(f_corr[key][meas])
         z2 = np.arctanh(m_corr[key][meas])
+
 
         Zobserved = (z1 - z2) / np.sqrt((1 / (len(m_subj) - 3)) + (1 / (len(f_subj) - 3)))
         print('Difference in corr {0} x {1}, female - male: z = {1}, p = {2}'.format(key, meas, Zobserved, norm.sf(abs(Zobserved))*2))
@@ -318,8 +329,10 @@ m_gid_behav = {}
 gid_behav = {}
 
 for key in behav:
+
     f_gid_behav[key] = spearmanr(df_f[('2', 'GID Post')], df_f[key], nan_policy='omit')
     m_gid_behav[key] = spearmanr(df_m[('2', 'GID Post')], df_m[key], nan_policy='omit')
+
     #gid_behav[key] = spearmanr(big_df[('2', 'GID Post')], big_df[key], nan_policy='omit')
 
 f_gid_behav_corr = pd.DataFrame.from_dict(f_gid_behav, orient='index')
@@ -330,6 +343,7 @@ gid_behav_corr = pd.DataFrame.from_dict(gid_behav, orient='index')
 gid_behav_corr.to_csv(join(data_dir, 'corr_gid_meas.csv'))
 
 ########Mediation models & regressions!########
+
 df_m.rename({'Full Scale IQ_2': 'IQ', 'le left central executive phy': 'le-rCEN'}, axis=1, inplace=True)
 df_m.rename({'Full Scale IQ_2': 'IQ', 'le-rCEN': 'le_rCEN'}, axis=1, inplace=True)
 
@@ -346,12 +360,14 @@ import statsmodels.api as sm
 from statsmodels.stats.mediation import Mediation, MediationResults
 
 outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + IQ",
+
                                      no_na_m)
 mediator_model = sm.OLS.from_formula("IQ ~ le_rCEN", no_na_m)
 med = Mediation(outcome_model, mediator_model, "le_rCEN", "IQ").fit()
 med.summary(alpha=0.01)
 
 outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + GIDPost",
+
                                      no_na_m)
 mediator_model = sm.OLS.from_formula("GIDPost ~ le_rCEN", no_na_m)
 med = Mediation(outcome_model, mediator_model, "le_rCEN", "GIDPost").fit()
@@ -360,6 +376,7 @@ med.summary(alpha=0.01)
 #average causal mediation effect (ACME) = a*b = c - c'
 #average direct effect (ADE) = c'
 #total effect = a*b + c' = c
+
 df_f['HcDMN_phy_minus_gen'] = df_f['fc hippo-default mode phy'] - df_f['fc hippo-default mode gen']
 
 spearmanr(df_f['HcDMN_phy_minus_gen'], df_f['GIDPost'], nan_policy='omit')
@@ -372,6 +389,7 @@ spearmanr(df_m['lCEN_rCEN_gen_minus_phy'], df_m['GIDPost'], nan_policy='omit')
 hustle = sns.husl_palette(8)
 hustler = sns.husl_palette(8, h=.8)
 sns.set_palette(hustler)
+
 g = sns.lmplot('GIDPost', 'IQ', data=df_m, fit_reg=True)
 g.savefig(join(fig_dir, 'male-iq-by-gender.png'), dpi=300)
 
@@ -381,7 +399,9 @@ g.savefig(join(fig_dir, 'male-vciq-by-gender.png'), dpi=300)
 hustler_desat = sns.husl_palette(8, h=.8, s=0.5)
 sex_cmap = [hustle[0], hustler[0]]
 
+
 g = sns.lmplot('GIDPost', 'Mean Physics Retrieval Accuracy', data=df_m, fit_reg=True)
+
 g.savefig(join(fig_dir, 'male-phy-acc-by-gender.png'), dpi=300)
 
 big_df.keys()

@@ -1,0 +1,6 @@
+190529-17:18:34,553 interface INFO:
+	 stderr 2019-05-29T17:18:34.553344:terminate called after throwing an instance of 'NiftiException'
+190529-17:18:34,557 interface INFO:
+	 stderr 2019-05-29T17:18:34.553344:  what():  Error: cant open file /home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/213/213-session-0_rest_mni-fnirt-epi-warp.nii.gz
+190529-17:18:34,557 interface INFO:
+	 stderr 2019-05-29T17:18:34.553344:/home/applications/fsl/6.0.1/bin/invwarp: line 93: 19600 Aborted                 (core dumped) ${FSLDIR}/bin/new_invwarp $*
