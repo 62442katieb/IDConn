@@ -32,10 +32,9 @@ shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = ['shen2015', 'craddock2012']
 
-tasks = {'reas': [{'conditions': ['Reasoning', 'Baseline']},
-                  {'runs': [0,1]}],
-         'retr': [{'conditions': ['Physics', 'General']},
-                  {'runs': [0,1]}],}
+tasks = {'fci': [{'conditions': ['Physics', 'NonPhysics']},
+                  {'runs': [0,1,2]}],}
+
 
 sessions = [0,1]
 sesh = ['pre', 'post']
@@ -75,8 +74,7 @@ for subject in subjects:
                             ge_s.append(ge)
 
                             #characteristic path length
-                            dist = bct.distance_wei(thresh)
-                            cp = bct.charpath(dist)
+                            cp = bct.charpath(thresh)
                             cp_s.append(cp[0])
 
                             #modularity
@@ -94,5 +92,5 @@ for subject in subjects:
                         lab_notebook.at[(subject, session, task, conds[i], mask),'errors'] = [e, str(datetime.datetime.now())]
                     df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock.csv'), sep=',')
 
-df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock.csv_{0}.csv'.format(str(datetime.datetime.today()))), sep=',')
-lab_notebook.to_csv(join(lab_notebook_dir, 'physics-learning-tasks-graphtheory_{0}.csv'.format(str(datetime.datetime.now()))))
+df.to_csv(join(sink_dir, 'physics-learning-fci_graphtheory_shen+craddock.csv_{0}.csv'.format(str(datetime.datetime.today()))), sep=',')
+lab_notebook.to_csv(join(lab_notebook_dir, 'physics-learning-fci-graphtheory_{0}.csv'.format(str(datetime.datetime.now()))))

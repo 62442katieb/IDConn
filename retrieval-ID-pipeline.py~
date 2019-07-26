@@ -53,8 +53,13 @@ import pandas as pd
 #add labels for the parcellation
 labels = ['limbic', 'orbitofrontal', 'basal ganglia', 'salience', 'hunger',
           'motor learning', 'frontoparietal', 'hand', 'motor execution', 'higher order visual',
+<<<<<<< HEAD
+          'lateral visual', 'medial visual', 'default mode',' cerebellum', 'left central executive',
+          'auditory', 'mouth', 'right central executive']
+=======
           'lateral visual', 'medial visual', 'default mode',' cerebellum', 'right central executive',
           'auditory', 'mouth', 'left central executive']
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
 
 #harvox_hippo = '/home/data/nbc/physics-learning/retrieval-graphtheory/harvox-hippo-prob50-2mm.nii.gz'
 #masks = [laird_2011_icns, harvox_hippo]

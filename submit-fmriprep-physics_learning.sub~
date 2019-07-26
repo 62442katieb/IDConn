@@ -45,7 +45,12 @@ singularity run /home/data/cis/singularity-images/poldracklab_fmriprep_1.2.5-201
     /scratch/kbott/physics-learning_dset \
     /scratch/kbott/physics-learning_dset/derivatives \
     participant --participant_label {sub} \
+<<<<<<< HEAD
+    --output-spaces MNI152NLin2009cAsym func --template-resampling-grid native \
+    --fs-no-reconall --use-aroma --fd-spike-threshold 0.9 \
+=======
     --output-space T1w --template MNI152NLin2009cAsym --template-resampling-grid native \
     --fs-no-reconall --use-aroma \
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
     --notrack --nthreads 1 --omp-nthreads $NPROCS \
     -w /scratch/kbott/{work}

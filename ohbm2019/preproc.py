@@ -256,5 +256,4 @@ for subject in subjects:
                 else:
                     lab_notebook.at[(subject, task, session),'errors'] = 'preprocessing already done'
 
-
 lab_notebook.to_csv(join(lab_notebook_dir, 'fci-preproc_{0}.csv'.format(str(datetime.datetime.now()))))

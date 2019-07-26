@@ -3,7 +3,9 @@
   {
    "cell_type": "code",
    "execution_count": 1,
-   "metadata": {},
+   "metadata": {
+    "collapsed": true
+   },
    "outputs": [],
    "source": [
     "from __future__ import division\n",
@@ -32,6 +34,17 @@
    ]
   },
   {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "outliers = np.genfromtxt(mout.inputs.out_metric_values)\n",
+    "outliers[outliers > motion_thresh] = 1\n",
+    "outliers[outliers < motion_thresh] = 0"
+   ]
+  },
+  {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
@@ -47,22 +60,19 @@
     "6. Spatial normalization to MNI template\n",
     "7. Spatial smoothing (6mm FWHM)\n",
     "8. High-pass filtering (236_s_)\n",
-    "9. Timecourse per voxel demeaned\n",
-    "<br>\n",
+    "9. Timecourse per voxel demeaned.\n",
     "### Alterations made below\n",
     "Preprocessing was done with FSL tools in Nipype.\n",
     "3. No fieldmaps, so no unwarping... (look into this)\n",
     "7. No smoothing\n",
-    "8. High pass filtering (??)\n",
-    "9. Demeaning???"
+    "8. High pass filtering at 55s\n",
+    "9. Standardized TS"
    ]
   },
   {
    "cell_type": "code",
-   "execution_count": 4,
-   "metadata": {
-    "collapsed": true
-   },
+   "execution_count": 1,
+   "metadata": {},
    "outputs": [],
    "source": [
     "def preproc(data_dir, sink_dir, subject, run, highpass, masks, mask_names):\n",
@@ -82,7 +92,7 @@
     "        return t1, epi, standard\n",
     "    \n",
     "    data = Function(function=get_niftis, input_names=[\"subject_id\", \"data_dir\", \"run\"],\n",
-    "                            output_names=[\"t1\", \"bold\", \"standard\"])\n
+    "                            output_names=[\"t1\", \"bold\", \"standard\"])\n",
     "    data.inputs.data_dir = data_dir\n",
     "    data.inputs.subject_id = subject\n",
     "    data.inputs.run = run\n",
@@ -101,7 +111,7 @@
     "    flirty = mcflirt.run()\n",
     "    \n",
     "    #motion outliers\n",
-    "    mout = MotionOutliers(no_motion_correction=True, metric='fd')\n",
+    "    mout = MotionOutliers(metric='fd')\n",
     "    mout.inputs.in_file = flirty.outputs.out_file\n",
     "    moutliers = mout.run()\n",
     "    \n",
@@ -122,8 +132,7 @@
     "    flit.inputs.reference = fun.outputs.roi_file\n",
     "    flit.inputs.in_file = grabber.outputs.t1\n",
     "    flit.inputs.out_file = join(data_dir, subject, 'session-1', 'retr', 'mni', 't1-flirt-func-{0}.nii.gz'.format(run))\n",
-    "    flit.inputs.out_matrix_file = join(data_dir, subject, 'session-1', 'retr', 'mni', 't1-to-func-{0}.mat'.format(run))\n"
-,
+    "    flit.inputs.out_matrix_file = join(data_dir, subject, 'session-1', 'retr', 'mni', 't1-to-func-{0}.mat'.format(run))\n",
     "    reg1 = flit.run()\n",
     "    #plot flirted MNI overlaid on example_func\n",
     "    plot_roi(reg1.outputs.out_file, bg_img=fun.outputs.roi_file, colorbar=True, draw_cross=False, output_file=qa1)\n",
@@ -143,13 +152,17 @@
     "        warp.inputs.in_file = masks[i]\n",
     "        warp.inputs.ref_file = fun.outputs.roi_file\n",
     "        warp.inputs.field_file = reg2.outputs.field_file\n",
+    "        warp.inputs.premat = reg1.outputs.out_matrix_file\n",
+    "        warp.inputs.out_file = join(data_dir, subject, 'session-1', 'retr', 'mni', \n",
+    "                                    '{0}-in-func-{0}.nii.gz'.format(mask_names[i], run))\n",
     "        net_warp = warp.run()\n",
     "        xfmd_ntwks.append(net_warp.outputs.out_file)\n",
+    "        print net_warp.outputs.out_file\n",
     "        \n",
     "        qa_file = join(sink_dir, 'qa', '{0}_ntwk_qa_{1}-{2}.png'.format(subject, mask_names[i], run))\n",
     "\n",
     "        plotting.plot_roi(net_warp.outputs.out_file, bg_img=fun.outputs.roi_file, \n",
-    "                          colorbar=True, vmin=0, vmax=18, draw_cross=False, output_file=qa_file)\n",
+    "                          colorbar=True, vmin=0, vmax=18, draw_cross=False, output_file=qa_file, dim=-1)\n",
     "    \n",
     "    ntwk_masker = input_data.NiftiLabelsMasker(xfmd_ntwks[0], standardize=True, high_pass=highpass, t_r=2.0)\n",
     "    hippo_masker = input_data.NiftiLabelsMasker(xfmd_ntwks[1], standardize=True, high_pass=highpass, t_r=2.0)\n",
@@ -159,8 +172,11 @@
   },
   {
    "cell_type": "code",
+<<<<<<< HEAD
    "execution_count": 28,
-   "metadata": {},
+   "metadata": {
+    "collapsed": false
+   },
    "outputs": [
     {
      "name": "stdout",
@@ -255,6 +271,10 @@
    "metadata": {
     "collapsed": true
    },
+=======
+   "execution_count": 2,
+   "metadata": {},
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
    "outputs": [],
    "source": [
     "#choose your atlas and either fetch it from Nilearn using one of the the 'datasets' functions\n",
@@ -273,8 +293,11 @@
   },
   {
    "cell_type": "code",
+<<<<<<< HEAD
    "execution_count": 8,
-   "metadata": {},
+   "metadata": {
+    "collapsed": true
+   },
    "outputs": [],
    "source": [
     "plotting.plot_roi(harvox_hippo, cut_coords=(-25, -10, -6), colorbar=True, vmin=0, vmax=2, draw_cross=False)\n",
@@ -314,6 +337,8 @@
   },
   {
    "cell_type": "code",
+=======
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
    "execution_count": null,
    "metadata": {
     "collapsed": true
@@ -346,10 +371,8 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 18,
-   "metadata": {
-    "collapsed": true
-   },
+   "execution_count": 5,
+   "metadata": {},
    "outputs": [],
    "source": [
     "data_dir = '/home/data/nbc/physics-learning/data/pre-processed'\n",
@@ -360,7 +383,9 @@
     "connectivity_metric = 'correlation'\n",
     "networks = [12, 14, 17]\n",
     "conditions = ['phy', 'gen']\n",
-    "thresh_range = np.arange(0.1, 1, 0.1)"
+    "thresh_range = np.arange(0.1, 1, 0.1)\n",
+    "\n",
+    "correlation_measure = ConnectivityMeasure(kind=connectivity_metric)"
    ]
   },
   {
@@ -424,10 +449,93 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
+   "metadata": {},
    "outputs": [],
+   "source": [
+    "#run preprocessing once per run per subject\n",
+    "for subject in subjects:\n",
+    "    ntwk_run_cond = {}\n",
+    "    netwk = {}\n",
+    "    hippo = {}\n",
+    "    hippo_run_cond = {}\n",
+    "    corrmats = {}\n",
+    "    for run in runs:\n",
+    "        #xfm laird 2011 maps to subject's epi space & define masker\n",
+    "        epi_masks = preproc(data_dir, sink_dir, subject, i, highpass, masks, mask_names)\n",
+    "\n",
+    "        network_masker = epi_masks[2]\n",
+    "        hippo_masker = epi_masks[3]\n",
+    "        \n",
+    "        #extract the network-wise and hippocampus timeseries per run\n",
+    "        run = join(data_dir, subject, 'session-1', 'retr', 'mni', '{0}_filtered_func_data_{1}.nii.gz'.format(subject, i))\n",
+    "        ntwk_ts = network_masker.fit_transform(run)\n",
+    "        hippo_ts = hippo_masker.fit_transform(run)\n",
+    "        ts = [ntwk_ts, hippo_ts]\n",
+    "        #and then separate each run's timeseries into the different conditions\n",
+    "        for condition in conditions:\n",
+    "            ntwk_run_cond['{0},{1}'.format(condition, run)] = np.vstack((ntwk_ts[timing[condition][0,0].astype(int):(timing[condition][0,0]+timing[condition][0,1]+1).astype(int), :], ntwk_ts[timing[condition][1,0].astype(int):(timing[condition][1,0]+timing[condition][1,1]+1).astype(int), :], ntwk_ts[timing[condition][2,0].astype(int):(timing[condition][2,0]+timing[condition][2,1]+1).astype(int), :]))\n",
+    "            hippo_run_cond['{0},{1}'.format(condition, run)] = np.vstack((hippo_ts[timing[condition][0,0].astype(int):(timing[condition][0,0]+timing[condition][0,1]+1).astype(int)], hippo_ts[timing[condition][1,0].astype(int):(timing[condition][1,0]+timing[condition][1,1]+1).astype(int)], hippo_ts[timing[condition][2,0].astype(int):(timing[condition][2,0]+timing[condition][2,1]+1).astype(int)]))\n",
+    "    for condition in conditions:\n",
+    "        netwk[condition] = np.vstack((ntwk_run_cond['{0} 0'.format(condition)], ntwk_run_cond['{0} 1'.format(condition)]))\n",
+    "        hippo[condition] = np.vstack((hippo_run_cond['{0} 0'.format(condition)], hippo_run_cond['{0} 1'.format(condition)]))\n",
+    "        corrmats[condition] = correlation_measure.fit_transform([netwk[condition]])[0]\n",
+    "        np.savetxt(join(sink_dir, subject, '{0}-{1}-corrmat.csv'.format(subject, condition)), corrmats[condition])\n",
+    "        df.at[subject, 'fc default mode-left central executive {0}'.format(condition)] = corrmats[condition][12,14]\n",
+    "        df.at[subject, 'fc default mode-right central executive {0}'.format(condition)] = corrmats[condition][12,17]\n",
+    "        df.at[subject, 'fc left central executive-right central executive {0}'.format(condition)] = corrmats[condition][14,17]\n",
+    "        ge = []\n",
+    "        le = {}\n",
+    "        loceff = {}\n",
+    "        loceff['default mode'] = []\n",
+    "        loceff['left central executive'] = []\n",
+    "        loceff['right central executive'] = []\n",
+    "        for p in thresh_range:\n",
+    "            corrmat_thresh = bct.threshold_proportional(corrmats[condition], p, copy=True)\n",
+    "            #measures of interest here\n",
+    "            #global efficiency\n",
+    "            geff = bct.efficiency_wei(corrmat_thresh)\n",
+    "            ge.append(geff)\n",
+    "\n",
+    "            #local efficiency\n",
+    "            leff = bct.efficiency_wei(corrmat_thresh, local=True)\n",
+    "            #print leff[2]\n",
+    "            for network in networks:\n",
+    "                #print network\n",
+    "                loceff[labels[network]].append(leff[network])\n",
+    "                #loceff['{0}, {1}'.format(labels[network], condition)].append(leff[network])\n",
+    "            #print loceff\n",
+    "            le['{0}, {1}'.format(p, condition)] = loceff\n",
+    "        \n",
+    "        #print 'global efficiency is {0}'.format(ge)\n",
+    "        df.at[subject, 'global efficiency {0}'.format(condition)] = np.trapz(ge, dx=0.1)\n",
+    "        \n",
+    "        #populate df with hippo-FCs and local efficiencies per network\n",
+    "        for network in networks:\n",
+    "            df.at[subject, 'le {0} {1}'.format(labels[network], condition)] = np.trapz(loceff[labels[network]], dx=0.1)\n",
+    "            #calculate hippocampus-network correlations (FC) per network & populate df \n",
+    "            network_ts = np.reshape(timeseries[condition][:,network], (84,1))\n",
+    "            #print(network_ts.shape)\n",
+    "            df.at[subject, 'fc hippo-{0} {1}'.format(labels[network], condition)] = pearsonr(hippo[condition], network_ts)[0]\n",
+    "df.to_csv(join(sink_dir, 'out.csv'), sep=',')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'subjects' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mNameError\u001b[0m                                 Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-1-29a43125a43b>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0;32mfor\u001b[0m \u001b[0msubject\u001b[0m \u001b[0;32min\u001b[0m \u001b[0msubjects\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      2\u001b[0m     \u001b[0;31m#print subject\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      3\u001b[0m     \u001b[0;32mif\u001b[0m \u001b[0;32mnot\u001b[0m \u001b[0mexists\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mjoin\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0msink_dir\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msubject\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      4\u001b[0m             \u001b[0mmakedirs\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mjoin\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0msink_dir\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msubject\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      5\u001b[0m     \u001b[0mtimeseries\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m{\u001b[0m\u001b[0;34m}\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mNameError\u001b[0m: name 'subjects' is not defined"
+     ]
+    }
+   ],
    "source": [
     "for subject in subjects:\n",
     "    #print subject\n",
@@ -436,22 +544,13 @@
     "    timeseries = {}\n",
     "    corrmats = {}\n",
     "    hippo = {}\n",
+    "    \n",
+    "    #I SHOULD SWAP RUN AND CONDITION AND PUT PREPROC OUTSIDE OF CONDITION BECAUSE IT'S USELESS TO DUPLICATE THAT STEP\n",
+    "    #AND COMPUTATIONALLY INTENSIVE. PREPROC EACH RUN ONLY ONCE, GRAB THE TS, SPLICE CONDITION\n",
     "    for condition in conditions:\n",
     "        for i in np.arange(0, len(runs)):\n",
-    "            example_func = \n",
-    "            #xfm laird 2011 maps to subject's epi space & define masker\n",
-    "            epi_masks = preproc(data_dir, sink_dir, subject, i, highpass, masks, mask_names)\n",
-    "            network_masker = input_data.NiftiLabelsMasker(epi_masks[0], standardize=True)\n",
-    "            hippo_masker = input_data.NiftiLabelsMasker(epi_masks[1], standardize=True)\n",
-    "            plotting.plot_roi(laird_2011_icns, bg_img=example_func, cut_coords=(-2, 5, 40), \n",
-    "                          colorbar=True, vmin=0, vmax=18, draw_cross=False, \n",
-    "                          output_file=qa_file)\n",
-    "            \n",
-    "            \n",
     "            #extract network-wise timeseries from nifti into array\n",
-    "            run = join(data_dir, subject, 'session-1', 'retr', 'mni', '{0}_filtered_func_data_{1}.nii.gz'.format(subject, i))\n",
-    "            ts = network_masker.fit_transform(run)\n",
-    "            hippo_ts = hippo_masker.fit_transform(run)\n",
+    "            \n",
     "\n",
     "            #separate into different conditions\n",
     "            timeseries['{0} {1}'.format(condition, i)] = np.vstack((ts[timing[condition][0,0].astype(int):(timing[condition][0,0]+timing[condition][0,1]+1).astype(int), :], ts[timing[condition][1,0].astype(int):(timing[condition][1,0]+timing[condition][1,1]+1).astype(int), :], ts[timing[condition][2,0].astype(int):(timing[condition][2,0]+timing[condition][2,1]+1).astype(int), :]))\n",
@@ -520,24 +619,13 @@
    },
    "outputs": [],
    "source": [
-    "print subjects"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
-   "outputs": [],
-   "source": [
-    "local_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data/out/'\n",
+    "#local_dir = '/Users/Katie/Dropbox/Projects/physics-retrieval/data/out/'\n",
     "phy = np.zeros((18, 18))\n",
     "gen = np.zeros((18, 18))\n",
     "\n",
     "for subject in subjects:\n",
-    "    phy += np.genfromtxt(join(local_dir, subject, '{0}-phy-corrmat.csv'.format(subject)), delimiter=' ')\n",
-    "    gen += np.genfromtxt(join(local_dir, subject, '{0}-gen-corrmat.csv'.format(subject)), delimiter=' ')\n",
+    "    phy += np.genfromtxt(join(sink_dir, subject, '{0}-phy-corrmat.csv'.format(subject)), delimiter=' ')\n",
+    "    gen += np.genfromtxt(join(sink_dir, subject, '{0}-gen-corrmat.csv'.format(subject)), delimiter=' ')\n",
     "phy_corrmat = phy / len(subjects)\n",
     "gen_corrmat = gen / len(subjects)\n",
     "\n",
@@ -550,27 +638,16 @@
     "#np.savetxt(join(local_dir, 'avg_phys_corrmat.csv'), phy_corrmat, delimiter=',')\n",
     "#np.savetxt(join(local_dir, 'avg_gen_corrmat.csv'), gen_corrmat, delimiter=',')\n",
     "\n",
-    "phy_corr_df.to_csv(join(local_dir, 'avg_phys_corrmat.csv'), sep=',')\n",
-    "gen_corr_df.to_csv(join(local_dir, 'avg_gen_corrmat.csv'), sep=',')\n",
-    "dif_corr_df.to_csv(join(local_dir, 'avg_dif_corrmat.csv'), sep=',')"
+    "phy_corr_df.to_csv(join(sink_dir, 'avg_phys_corrmat.csv'), sep=',')\n",
+    "gen_corr_df.to_csv(join(sink_dir, 'avg_gen_corrmat.csv'), sep=',')\n",
+    "dif_corr_df.to_csv(join(sink_dir, 'avg_dif_corrmat.csv'), sep=',')"
    ]
   },
   {
-   "cell_type": "code",
-   "execution_count": null,
+   "cell_type": "markdown",
    "metadata": {
     "collapsed": true
    },
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
-   "outputs": [],
    "source": [
     "def adj_to_list(input_filename,output_filename,delimiter):\n",
     "    import pandas as pd\n",
@@ -591,27 +668,14 @@
    ]
   },
   {
-   "cell_type": "code",
-   "execution_count": null,
+   "cell_type": "markdown",
    "metadata": {
     "collapsed": true
    },
-   "outputs": [],
    "source": [
-    "phy_list = adj_to_list(join(local_dir, 'avg_phys_corrmat.csv'), join(local_dir, 'avg_phys_edges.csv'), ',')\n",
-    "gen_list = adj_to_list(join(local_dir, 'avg_gen_corrmat.csv'), join(local_dir, 'avg_gen_edges.csv'), ',')\n",
-    "dif_list = adj_to_list(join(local_dir, 'avg_dif_corrmat.csv'), join(local_dir, 'avg_dif_edges.csv'), ',')"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
-   "outputs": [],
-   "source": [
-    "phy_list"
+    "phy_list = adj_to_list(join(sink_dir, 'avg_phys_corrmat.csv'), join(sink_dir, 'avg_phys_edges.csv'), ',')\n",
+    "gen_list = adj_to_list(join(sink_dir, 'avg_gen_corrmat.csv'), join(sink_dir, 'avg_gen_edges.csv'), ',')\n",
+    "dif_list = adj_to_list(join(sink_dir, 'avg_dif_corrmat.csv'), join(sink_dir, 'avg_dif_edges.csv'), ',')"
    ]
   },
   {
@@ -627,21 +691,21 @@
  "metadata": {
   "anaconda-cloud": {},
   "kernelspec": {
-   "display_name": "Python 3",
+   "display_name": "Python 2",
    "language": "python",
-   "name": "python3"
+   "name": "python2"
   },
   "language_info": {
    "codemirror_mode": {
     "name": "ipython",
-    "version": 3
+    "version": 2
    },
    "file_extension": ".py",
    "mimetype": "text/x-python",
    "name": "python",
    "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.7.0"
+   "pygments_lexer": "ipython2",
+   "version": "2.7.13"
   }
  },
  "nbformat": 4,

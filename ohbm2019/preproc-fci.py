@@ -79,7 +79,7 @@ def preproc(data_dir, sink_dir, subject, task, session, run, masks, motion_thres
     qa1 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_t1_flirt.png'.format(subject, session, task, run))
     qa2 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_mni_flirt.png'.format(subject, session, task, run))
     qa3 = join(sink_dir, 'qa', '{0}-session-{1}_{2}-{3}_mni_fnirt.png'.format(subject, session, task, run))
-    confound_file = join(sink_dir, subject,'{0}-session-{1}_{2}-{3}_confounds.txt'.format(subject, session, task, run))
+    confound_file = join(sink_dir, sesh, subject,'{0}-session-{1}_{2}-{3}_confounds.txt'.format(subject, session, task, run))
 
     #run motion correction if indicated
     if moco == True:
@@ -210,6 +210,13 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
             '613', '614', '615', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '629', '630', '631', '633',
             '634']
+subjects = ['464', '465', '467', '468', '469', '470', '502', '503', '571',
+            '572', '573', '574', '577', '578', '581', '582', '584', '585',
+            '586', '587', '588', '589', '591', '592', '593', '594', '595',
+            '596', '597', '598', '604', '605', '606', '607', '608', '609',
+            '610', '612','613', '614', '615', '617', '618', '619', '620',
+            '621', '622','623', '624', '625', '626', '627', '629', '630',
+            '631', '633','634']
 #all subjects 102 103 101 104 106 107 108 110 212 X213 214 215 216 217 218 219 320 321 X322 323 324 325
 #327 328 X329 330 331 X332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 451
 #X452 453 455 X456 X457 458 459 460 462 463 464 465 467 468 469 470 502 503 571 572 573 574 X575 577 578
@@ -228,9 +235,9 @@ lab_notebook_dir = '/home/kbott006/lab_notebook/'
 motion_thresh=0.9
 
 runs = [0, 1, 2]
-sessions = [0]
+sessions = [0,1]
 tasks = ['fci']
-sesh = ['pre']
+sesh = ['pre', 'post']
 
 index = pd.MultiIndex.from_product([subjects, tasks, sessions], names=['subject', 'task', 'session'])
 lab_notebook = pd.DataFrame(index=index, columns=['start', 'end', 'errors'])
@@ -246,15 +253,16 @@ for subject in subjects:
             for run in runs:
                 lab_notebook.at[(subject, task, session),'start'] = str(datetime.datetime.now())
                 #xfm laird 2011 maps to subject's epi space & define masker
-                if not exists(join(sink_dir, sesh[session], subject,'{0}-session-{1}_{2}-{3}_mcf.nii.gz'.format(subject, session, task, run))):
+                if not exists(join(sink_dir, sesh[session], subject,'{0}-session-{1}_{2}-{3}_confounds.txt'.format(subject, session, task, run))):
+                    print('fci preproc hasn\'t been run')
                     try:
                         x = preproc(data_dir, sink_dir, subject, task, session, run, masks, motion_thresh, moco=True)
                         lab_notebook.at[(subject, task, session),'end'] = str(datetime.datetime.now())
                     except Exception as e:
+                        x = ['', '', 'didn\'t run']
                         lab_notebook.at[(subject, task, session),'errors'] = [x[2], e, str(datetime.datetime.now())]
                         print(subject, session, task, run, e, x[2])
                 else:
                     lab_notebook.at[(subject, task, session),'errors'] = 'preprocessing already done'
-
 
 lab_notebook.to_csv(join(lab_notebook_dir, 'fci-preproc_{0}.csv'.format(str(datetime.datetime.now()))))

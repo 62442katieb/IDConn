@@ -186,7 +186,6 @@ for subject in subjects:
         np.savetxt(join(data_dir, subject, '{0}-{1}-corrmat.csv'.format(subject, condition)), corrmats[condition])
         df.at[subject, 'fc default mode-right central executive {0}'.format(condition)] = corrmats[condition][12,14]
         df.at[subject, 'fc default mode-left central executive {0}'.format(condition)] = corrmats[condition][12,17]
-
         df.at[subject, 'fc left central executive-right central executive {0}'.format(condition)] = corrmats[condition][14,17]
         ge = []
         le = {}

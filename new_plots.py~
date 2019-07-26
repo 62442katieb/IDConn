@@ -40,7 +40,11 @@ def fnirt_again(data_dir, sink_dir, subject, run, masks, mask_names):
     for i in np.arange(0, len(masks)):
         #warp takes us from mni to t1, postmat
         warp = ApplyWarp(interp="nn", abswarp=True)
+<<<<<<< HEAD
+        warp.inputs.in_file = grabber.output.masks[i]
+=======
         warp.inputs.in_file = grabber.outputs.masks[i]
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
         warp.inputs.ref_file = grabber.outputs.example_func
         warp.inputs.field_file = reg2.outputs.field_file
         warp.inputs.postmat = grabber.outputs.t12epi

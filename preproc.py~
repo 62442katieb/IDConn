@@ -227,10 +227,17 @@ lab_notebook_dir = '/home/kbott006/lab_notebook/'
 
 motion_thresh=0.9
 
+<<<<<<< HEAD
+runs = [0, 1]
+sessions = [0,1]
+tasks = ['reas', 'retr']
+sesh = ['pre', 'post']
+=======
 runs = [0, 1, 2]
 sessions = [0]
 tasks = ['fci']
 sesh = ['pre']
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
 
 index = pd.MultiIndex.from_product([subjects, tasks, sessions], names=['subject', 'task', 'session'])
 lab_notebook = pd.DataFrame(index=index, columns=['start', 'end', 'errors'])
@@ -256,5 +263,8 @@ for subject in subjects:
                 else:
                     lab_notebook.at[(subject, task, session),'errors'] = 'preprocessing already done'
 
-
+<<<<<<< HEAD
+lab_notebook.to_csv(join(lab_notebook_dir, 'phys-iq-preproc_{0}.csv'.format(str(datetime.datetime.now()))))
+=======
 lab_notebook.to_csv(join(lab_notebook_dir, 'fci-preproc_{0}.csv'.format(str(datetime.datetime.now()))))
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb

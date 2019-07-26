@@ -75,8 +75,12 @@ for subject in subjects:
                             ge_s.append(ge)
 
                             #characteristic path length
+<<<<<<< HEAD
+                            cp = bct.charpath(thresh)
+=======
                             dist = bct.distance_wei(thresh)
                             cp = bct.charpath(dist)
+>>>>>>> 6a60b38ad9fbc030239b1da8dd4b6dcb046a05cb
                             cp_s.append(cp[0])
 
                             #modularity
