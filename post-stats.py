@@ -129,6 +129,7 @@ m_descriptives = pd.concat(list_of_measures, axis=1, sort=False)
 m_descriptives = m_descriptives.rename({0:'mean', 1:'median', 2:'sdev', 3:'variance', 4:'skew', 5:'kurtosis'}, axis=1)
 m_descriptives.to_csv(join(data_dir, 'decriptives_m.csv'))
 
+
 #scorr = spearmanr(df)
 pcorr = df.corr(method='spearman')
 
@@ -199,6 +200,7 @@ m_paired_tests = m_paired_tests.stack()
 
 paired_ttests = pd.DataFrame({'all': paired_tests, 'female': f_paired_tests, 'male': m_paired_tests})
 
+
 paired_ttests = paired_ttests.unstack()
 
 paired_ttests.to_csv(join(data_dir, 'paired-ttests_brain.csv'))
@@ -217,6 +219,7 @@ for key in all_vars:
             sex_diff[key] = ttest_ind(df_f[key], df_m[key], equal_var=True, nan_policy='omit')
         else:
             sex_diff[key] = ttest_ind(df_f[key], df_m[key], equal_var=False, nan_policy='omit')
+
 
 
 #should actually be using mannwhitneyu instead of ttest_ind
@@ -300,6 +303,7 @@ for key in brain:
 female_corr = pd.DataFrame.from_dict(fcorrs, orient='index')
 f_corr = df_f.corr('spearman')
 
+
 female_corr.min()
 female_corr.to_csv(join(data_dir, 'corr_female_brain_meas.csv'))
 
@@ -314,6 +318,7 @@ for key in brain:
     for meas in behav:
         z1 = np.arctanh(f_corr[key][meas])
         z2 = np.arctanh(m_corr[key][meas])
+
 
 
         Zobserved = (z1 - z2) / np.sqrt((1 / (len(m_subj) - 3)) + (1 / (len(f_subj) - 3)))
@@ -332,6 +337,7 @@ for key in behav:
 
     f_gid_behav[key] = spearmanr(df_f[('2', 'GID Post')], df_f[key], nan_policy='omit')
     m_gid_behav[key] = spearmanr(df_m[('2', 'GID Post')], df_m[key], nan_policy='omit')
+
 
     #gid_behav[key] = spearmanr(big_df[('2', 'GID Post')], big_df[key], nan_policy='omit')
 
@@ -363,11 +369,11 @@ outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + IQ",
 
                                      no_na_m)
 mediator_model = sm.OLS.from_formula("IQ ~ le_rCEN", no_na_m)
+
 med = Mediation(outcome_model, mediator_model, "le_rCEN", "IQ").fit()
 med.summary(alpha=0.01)
 
 outcome_model = sm.GLM.from_formula("Phy48Grade ~ le_rCEN + GIDPost",
-
                                      no_na_m)
 mediator_model = sm.OLS.from_formula("GIDPost ~ le_rCEN", no_na_m)
 med = Mediation(outcome_model, mediator_model, "le_rCEN", "GIDPost").fit()
