@@ -64,6 +64,8 @@ conds = ['high-level', 'lower-level']
 #find a way to estimate this threshold range...
 #or threshold it
 thresh_range = np.arange(0.1, 1, 0.1)
+
+#this should be calculated from the task timing ughhhhhhh
 highpass = 1/55.
 
 correlation_measure = ConnectivityMeasure(kind=connectivity_metric)
@@ -133,8 +135,10 @@ for subject in subjects:
                                 timing['{0}-{1}'.format(run, condition)][:,0] = np.round(timing['{0}-{1}'.format(run, condition)][:,0]/2,0) - 1
                                 timing['{0}-{1}'.format(run, condition)][:,1] = np.round(np.round(timing['{0}-{1}'.format(run, condition)][:,1],0)/2,0)
                                 timing['{0}-{1}'.format(run, condition)] = timing['{0}-{1}'.format(run, condition)][:,0:2]
-                                #print(timing['{0}-{1}'.format(run, condition)])
+                                highpass = np.average(timing['{0}-{1}'.format(run, condition)][:,1]) * len(conditions)
+                                print(timing['{0}-{1}'.format(run, condition)])
                             else:
+                                highpass = 1/66.
                                 #make this work better for reasoning timing
                                 timing['{0}-{1}'.format(run, condition)] = np.genfromtxt(join(timing_dir, subject, 'session-{0}'.format(i), task, '{0}-{1}-{2}.txt'.format(task, run, condition)), delimiter='\t', dtype='float')
                                 #print(np.average(timing['{0}-{1}'.format(run, condition)][:,1]))
@@ -142,6 +146,7 @@ for subject in subjects:
                                 timing['{0}-{1}'.format(run, condition)][:,1] = 3
                                 timing['{0}-{1}'.format(run, condition)] = timing['{0}-{1}'.format(run, condition)][:,0:2]
                                 #print(timing['{0}-{1}'.format(run, condition)])
+                        print(highpass)
                         epi = join(data_dir, sessions[i], subject,'{0}-session-{1}_{2}-{3}_mcf.nii.gz'.format(subject, i, task, run))
                         confounds = join(data_dir, sessions[i], subject,'{0}-session-{1}_{2}-{3}_mcf.nii.gz.par'.format(subject, i, task, run))
                         assert exists(epi), "epi_mcf does not exist at {0}".format(epi)
