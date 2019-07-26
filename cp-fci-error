@@ -1,0 +1,85 @@
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/213/213-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/213/213-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/213/213-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/213/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/213/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/213/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/322/322-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/322/322-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/322/322-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/322/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/322/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/322/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/329/329-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/329/329-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/329/329-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/329/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/329/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/329/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/332/332-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/332/332-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/332/332-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/332/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/332/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/332/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/348/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/452/452-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/452/452-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/452/452-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/452/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/452/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/452/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/456/456-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/456/456-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/456/456-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/456/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/456/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/456/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/457/457-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/457/457-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/457/457-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/457/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/457/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/457/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/575/575-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/575/575-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/575/575-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/575/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/575/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/575/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/579/579-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/579/579-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/579/579-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/579/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/579/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/579/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/580/580-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/580/580-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/580/580-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/580/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/580/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/580/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/590/590-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/590/590-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/590/590-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/590/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/590/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/590/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/611/611-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/611/611-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/611/611-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/611/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/611/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/611/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/616/616-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/616/616-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/616/616-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/616/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/616/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/616/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/628/628-session-0_fci-0_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/628/628-session-0_fci-1_mcf.nii.gz': No such file or directory
+cp: cannot create regular file `/home/data/nbc/physics-learning/retrieval-graphtheory/output/pre/628/628-session-0_fci-2_mcf.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/628/session-1/fci/fci-0/fci-0-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/628/session-1/fci/fci-1/fci-1-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory
+cp: cannot stat `/home/data/nbc/physics-learning/data/pre-processed/628/session-1/fci/fci-2/fci-2-ppi.feat/filtered_func_data_nosmooth.nii.gz': No such file or directory

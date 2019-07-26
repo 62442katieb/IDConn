@@ -1,0 +1,87 @@
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+181210-11:45:23,927 interface INFO:
+	 stdout 2018-12-10T11:45:23.926877:Warning, Jacobian not within prescribed range. Prescription is 0.01 -- 100 and obtained range is -0.361643 -- 2.51202
+181210-11:58:09,345 interface INFO:
+	 stdout 2018-12-10T11:58:09.345257:Warning, Jacobian not within prescribed range. Prescription is 0.01 -- 100 and obtained range is -1.17045 -- 6.26018
+'InterfaceResult' object has no attribute 'output'
+181210-12:14:45,538 interface INFO:
+	 stdout 2018-12-10T12:14:45.537850:Warning, Jacobian not within prescribed range. Prescription is 0.01 -- 100 and obtained range is -0.361643 -- 2.51202
+181210-12:27:32,994 interface INFO:
+	 stdout 2018-12-10T12:27:32.994724:Warning, Jacobian not within prescribed range. Prescription is 0.01 -- 100 and obtained range is -1.17045 -- 6.26018
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+'InterfaceResult' object has no attribute 'output'
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@n086>
+Subject: Job 967150: <phys-retr-plots> Done
+
+Job <phys-retr-plots> was submitted from host <u02> by user <kbott006> in cluster <panther>.
+Job was executed on host(s) <n086>, in queue <PQ_nbc>, as user <kbott006> in cluster <panther>.
+</home/kbott006> was used as the home directory.
+</home/kbott006/physics-retrieval/idconn-retrieval> was used as the working directory.
+Started at Mon Dec 10 11:16:37 2018
+Results reported at Mon Dec 10 13:22:03 2018
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#---Number of core
+#BSUB -n 1
+
+#---Job's name in LSF system
+#BSUB -J phys-retr-plots
+
+#---Error file
+#BSUB -eo /home/kbott006/physics-retrieval/idconn-retrieval/plots-error
+
+#---Output file
+#BSUB -oo /home/kbott006/physics-retrieval/idconn-retrieval/plots-output
+
+#---LSF Queue name
+#BSUB -q PQ_nbc
+
+##########################################################
+# Setup envrionmental variable.
+##########################################################
+export NPROCS=`echo $LSB_HOSTS | wc -w`
+export OMP_NUM_THREADS=$NPROCS
+
+. $MODULESHOME/../global/profile.modules
+module load anaconda/2.7.13
+module load fsl
+##########################################################
+##########################################################
+
+python new_plots.py
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time   :   7513.61 sec.
+    Max Memory :      1606 MB
+    Max Swap   :      2327 MB
+
+    Max Processes  :         5
+    Max Threads    :         6
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file </home/kbott006/physics-retrieval/idconn-retrieval/plots-error> for stderr output of this job.
+

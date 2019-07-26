@@ -1,0 +1,2 @@
+/home/applications/anaconda2/4.3.1/lib/python2.7/site-packages/numpy/lib/npyio.py:1487: UserWarning: genfromtxt: Empty input file: "/home/data/nbc/physics-learning/data/behavioral-data/vectors/582/session-0/reas/reas-0-Baseline.txt"
+  warnings.warn('genfromtxt: Empty input file: "%s"' % fname)

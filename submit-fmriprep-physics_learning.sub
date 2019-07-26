@@ -1,0 +1,44 @@
+#!/bin/bash
+#---Number of cores
+#BSUB -n 8
+#BSUB -R "span[ptile=8]"
+
+#---Job's name in LSF system
+#BSUB -J {sub}
+
+#---Error file
+#BSUB -eo /home/data/nbc/Sutherland_ACE/code/errorfiles/sub-{sub}-fmriprep
+
+#---Output file
+#BSUB -oo /home/data/nbc/Sutherland_ACE/code/outfiles/sub-{sub}-fmriprep
+
+#---LSF Queue name
+#BSUB -q PQ_nbc
+
+##########################################################
+# Set up environmental variables.
+##########################################################
+export NPROCS=`echo $LSB_HOSTS | wc -w`
+export OMP_NUM_THREADS=$NPROCS
+
+. $MODULESHOME/../global/profile.modules
+module load singularity
+
+##########################################################
+##########################################################
+# Set variables
+# Clear Python path to prevent contamination
+PYTHONPATH=""
+
+# Run fMRIPrep
+# Data, image, and output directory must be in scratch directory.
+# Use nthreads/omp-nthreads configuration based on
+# https://neurostars.org/t/fmriprep-stopped-due-to-memory-error/2275/18
+singularity run /home/data/cis/singularity-images/poldracklab_fmriprep_1.2.5-2018-12-04-c739710ca08f.img \
+    /scratch/kbott/physics-learning_dset \
+    /scratch/kbott/physics-learning_dset/derivatives \
+    participant --participant_label {sub} \
+    --output-spaces MNI152NLin2009cAsym func --template-resampling-grid native \
+    --fs-no-reconall --use-aroma --fd-spike-threshold 0.9 \
+    --notrack --nthreads 1 --omp-nthreads $NPROCS \
+    -w /scratch/kbott/{work}

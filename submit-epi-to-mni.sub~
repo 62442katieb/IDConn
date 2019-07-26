@@ -1,0 +1,31 @@
+#!/bin/bash
+#---Number of core
+#BSUB -n 1
+
+#---Job's name in LSF system
+#BSUB -J physics-learning-rest-to-mni
+
+#---Error file
+#BSUB -eo /home/kbott006/physics-retrieval/testing-error
+
+#---Output file
+#BSUB -oo /home/kbott006/physics-retrieval/testing-output
+
+#---LSF Queue name
+#BSUB -q PQ_nbc
+
+##########################################################
+# Setup envrionmental variable.
+##########################################################
+export NPROCS=`echo $LSB_HOSTS | wc -w`
+export OMP_NUM_THREADS=$NPROCS
+
+. $MODULESHOME/../global/profile.modules
+module load anaconda/2.7.13
+module load fsl
+##########################################################
+##########################################################
+
+nbc_env
+module load anaconda/2.7.13
+python retrieval-ID-pipeline.py

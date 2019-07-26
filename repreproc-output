@@ -1,0 +1,68 @@
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@n086>
+Subject: Job 857576: <physics-learning-rest-to-mni> Exited
+
+Job <physics-learning-rest-to-mni> was submitted from host <u02> by user <kbott006> in cluster <panther>.
+Job was executed on host(s) <n086>, in queue <PQ_nbc>, as user <kbott006> in cluster <panther>.
+</home/kbott006> was used as the home directory.
+</home/kbott006/physics-retrieval/idconn-retrieval> was used as the working directory.
+Started at Wed Sep 26 14:32:10 2018
+Results reported at Wed Sep 26 14:32:17 2018
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#---Number of core
+#BSUB -n 1
+
+#---Job's name in LSF system
+#BSUB -J physics-learning-rest-to-mni
+
+#---Error file
+#BSUB -eo /home/kbott006/physics-retrieval/idconn-retrieval/repreproc-error
+
+#---Output file
+#BSUB -oo /home/kbott006/physics-retrieval/idconn-retrieval/repreproc-output
+
+#---LSF Queue name
+#BSUB -q PQ_nbc
+
+##########################################################
+# Setup envrionmental variable.
+##########################################################
+export NPROCS=`echo $LSB_HOSTS | wc -w`
+export OMP_NUM_THREADS=$NPROCS
+
+. $MODULESHOME/../global/profile.modules
+module load anaconda/2.7.13
+module load fsl
+##########################################################
+##########################################################
+
+python preproc.py
+
+------------------------------------------------------------
+
+TERM_OWNER: job killed by owner.
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time   :      0.39 sec.
+    Max Memory :         2 MB
+    Max Swap   :        46 MB
+
+    Max Processes  :         1
+    Max Threads    :         1
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file </home/kbott006/physics-retrieval/idconn-retrieval/repreproc-error> for stderr output of this job.
+
