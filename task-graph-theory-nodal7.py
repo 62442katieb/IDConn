@@ -7,6 +7,9 @@ from nilearn.connectome import ConnectivityMeasure
 from nilearn.plotting import plot_anat, plot_roi
 import bct
 import datetime
+import time
+
+today = datetime.date.fromtimestamp(time.time()).isoformat()
 
 subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213',
             '214', '215', '216', '217', '218', '219', '320', '321', '322', '323',
@@ -21,7 +24,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
-subjects = ['101', '102']
+subjects = ['468', '469', '470', '502', '503', '571', '572', '573', '574', '575']
 kappa_upper = 0.21
 kappa_lower = 0.31
 
@@ -35,21 +38,23 @@ masks = ['shen2015', 'craddock2012']
 tasks = {'reas': [{'conditions': ['Reasoning', 'Baseline']},
                   {'runs': [0,1]}],
          'retr': [{'conditions': ['Physics', 'General']},
-                  {'runs': [0,1]}],}
+                  {'runs': [0,1]}], 
+         'fci': [{'conditions': ['Physics', 'NonPhysics']},
+                  {'runs': [0,1,2]}]}
 
 sessions = [0,1]
 sesh = ['pre', 'post']
 conds = ['high-level', 'lower-level']
 
-lab_notebook_dir = '/home/kbott006/lab_notebook/'
+#lab_notebook_dir = '/home/kbott006/lab_notebook/'
 index = pd.MultiIndex.from_product([subjects, sessions, tasks, conds, masks], names=['subject', 'session', 'task', 'condition', 'mask'])
-lab_notebook = pd.DataFrame(index=index, columns=['start', 'end', 'errors'])
+#lab_notebook = pd.DataFrame(index=index, columns=['start', 'end', 'errors'])
 
 correlation_measure = ConnectivityMeasure(kind='correlation')
 
 index = pd.MultiIndex.from_product([subjects, sessions, tasks, conds, masks], names=['subject', 'session', 'task', 'condition', 'mask'])
 
-df = pd.DataFrame(columns=['efficiency', 'charpath', 'modularity', 'assortativity', 'transitivity'], index=index, dtype=np.float64)
+df = pd.DataFrame(columns=['lEff0'], index=index, dtype=np.float64)
 
 for subject in subjects:
     for session in sessions:
@@ -59,52 +64,29 @@ for subject in subjects:
                 conditions = tasks[task][0]['conditions']
                 for mask in masks:
                     try:
-                        lab_notebook.at[(subject, session, task, conds[i], mask),'start'] = str(datetime.datetime.now())
+                        #lab_notebook.at[(subject, session, task, conds[i], mask),'start'] = str(datetime.datetime.now())
                         corrmat = np.genfromtxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, conditions[i], mask)), delimiter=' ')
 
-                        ge_s = []
-                        cp_s = []
-                        md_s = []
-                        at_s = []
-                        tr_s = []
-                        for p in np.arange(kappa_upper, kappa_lower, 0.01):
-                            ntwk = []
+                        leff_s = []
+                        coef_s = []
+                        for p in np.arange(kappa_upper, kappa_lower, 0.02):
                             thresh = bct.threshold_proportional(corrmat, p, copy=True)
 
                             #network measures of interest here
                             #global efficiency
-                            ge = bct.efficiency_wei(thresh)
-                            ge_s.append(ge)
+                            le = bct.efficiency_wei(thresh, local=True)
+                            leff_s.append(le)
 
-                            #characteristic path length
-                            cp = bct.charpath(thresh)
-                            cp_s.append(cp[0])
+                        leff_s = np.asarray(leff_s)
+                        leff = np.trapz(leff_s, dx=0.01, axis=0)
 
-                            #modularity
-                            md = bct.modularity_louvain_und(thresh)
-                            md_s.append(md[1])
-
-                            #network measures of interest here
-                            #global efficiency
-                            at = bct.assortativity_wei(thresh)
-                            at_s.append(at)
-
-                            #modularity
-                            tr = bct.transitivity_wu(thresh)
-                            tr_s.append(tr)
-
-                        df.at[(subject, session, task, conds[i], mask), 'assortativity'] = np.trapz(ge_s, dx=0.01)
-                        df.at[(subject, session, task, conds[i], mask), 'transitivity'] = np.trapz(md_s, dx=0.01)
-                        df.at[(subject, session, task, conds[i], mask), 'efficiency'] = np.trapz(ge_s, dx=0.01)
-                        df.at[(subject, session, task, conds[i], mask), 'charpath'] = np.trapz(cp_s, dx=0.01)
-                        df.at[(subject, session, task, conds[i], mask), 'modularity'] = np.trapz(md_s, dx=0.01)
-
-                        #df.to_csv(join(sink_dir, 'resting-state_graphtheory_shen+craddock.csv'), sep=',')
-                        lab_notebook.at[(subject, session, task, conds[i], mask),'end'] = str(datetime.datetime.now())
+                        for j in np.arange(0, leff.shape[0]):
+                            df.at[(subject, session, task, conds[i], mask), 'lEff{0}'.format(j)] = leff[j]
+                        #lab_notebook.at[(subject, session, task, conds[i], mask),'end'] = str(datetime.datetime.now())
                     except Exception as e:
                         print(e, subject, session)
-                        lab_notebook.at[(subject, session, task, conds[i], mask),'errors'] = [e, str(datetime.datetime.now())]
-                    df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock.csv'), sep=',')
+                        #lab_notebook.at[(subject, session, task, conds[i], mask),'errors'] = [e, str(datetime.datetime.now())]
+                df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock_nodal_7.csv'), sep=',')
 
-df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock.csv_{0}.csv'.format(str(datetime.datetime.today()))), sep=',')
-lab_notebook.to_csv(join(lab_notebook_dir, 'physics-learning-tasks-graphtheory_{0}.csv'.format(str(datetime.datetime.now()))))
+df.to_csv(join(sink_dir, 'physics-learning-tasks_graphtheory_shen+craddock_nodal_7_{0}.csv'.format(today)), sep=',')
+#lab_notebook.to_csv(join(sink_dir, 'LOG-physics-learning-tasks-graphtheory_nodal_{0}.csv'.format(today)))

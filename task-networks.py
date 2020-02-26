@@ -76,7 +76,7 @@ df = pd.DataFrame(columns=['k_scale-free', 'k_connected'],
                   index=index, dtype=np.float64)
 
 for subject in subjects:
-    print subject
+    print(subject)
     try:
         for i in np.arange(0,len(sessions)):
             print i
