@@ -1,4 +1,4 @@
-.ipynb_checkpoints/.
+.ipynb_checkpoints/*
 applyxfm.sub
 bad-qa.png
 cp-corrmats.sh
@@ -20,6 +20,8 @@ submit-flirt-to-mni_test.sub
 submit-reg2.sub
 testing-error
 testing-output
-assets/.
-data/.
+assets/*
+data/*
 gender-id-q-scoring.py
+*.DS_Store
+*/.DS_Store
