@@ -25,5 +25,4 @@ data/*
 gender-id-q-scoring.py
 *.DS_Store
 */.DS_Store
-gender-id-q-scoring.py
 .DS_Store
