@@ -80,7 +80,7 @@ for subject in subjects:
                         leff = np.trapz(ge_s, dx=0.01, axis=0)
                         ccoef = np.trapz(md_s, dx=0.01, axis=0)
                         for j in np.arange(0, 268):
-                            df.at[(subject, 0, task, conds[i], mask), 'lEff{0}'.format(j)] = leff[j]
+                            df.at[(subject, session, task, conds[i], mask), 'lEff{0}'.format(j)] = leff[j]
                             df.at[(subject, session, task, conds[i], mask), 'clustCoeff{0}'.format(j)] = ccoef[j]
                         lab_notebook.at[(subject, session, task, conds[i], mask),'end'] = str(datetime.datetime.now())
                     except Exception as e:
