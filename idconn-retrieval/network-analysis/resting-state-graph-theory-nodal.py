@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 from os import makedirs
 from os.path import join, exists
-from nilearn.input_data import NiftiLabelsMasker
+#from nilearn.input_data import NiftiLabelsMasker
 from nilearn.connectome import ConnectivityMeasure
 from nilearn.plotting import plot_anat, plot_roi
 import bct
-from nipype.interfaces.fsl import InvWarp, ApplyWarp
+#from nipype.interfaces.fsl import InvWarp, ApplyWarp
 import datetime
 
 subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213',
@@ -22,7 +22,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
-subjects = ['101', '102']
+#subjects = ['101', '102']
 
 
 sink_dir = '/Users/katherine/Dropbox/Projects/physics-retrieval/data/output'
@@ -64,15 +64,14 @@ for subject in subjects:
                     #shen_corrmat = correlation_measure.fit_transform([shen_ts])[0]
                     #np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_shen2015.csv'.format(subject, session)), shen_corrmat, delimiter=",")
                     corrmat = np.genfromtxt(join(sink_dir, '{0}-session-{1}-{2}_network_corrmat_{3}.csv'.format(subject, session, task, mask)), delimiter=",")
-
+                    print(corrmat.shape)
                     #craddock_ts = craddock_masker.fit_transform(epi_data, confounds)
                     #craddock_corrmat = correlation_measure.fit_transform([craddock_ts])[0]
                     #np.savetxt(join(sink_dir, sesh[session], subject, '{0}-session-{1}-rest_network_corrmat_craddock2012.csv'.format(subject, session)), craddock_corrmat, delimiter=",")
 
                     ge_s = []
                     ge_c = []
-                    cp_s = []
-                    cp_c = []
+                    
                     md_s = []
                     md_c = []
                     for p in np.arange(kappa_upper, kappa_lower, 0.01):
@@ -90,10 +89,11 @@ for subject in subjects:
                     ge_s = np.asarray(ge_s)
                     md_s = np.asarray(md_s)
                     leff = np.trapz(ge_s, dx=0.01, axis=0)
+                    print('local efficiency:', leff[0])
                     ccoef = np.trapz(md_s, dx=0.01, axis=0)
-                    for j in np.arange(0, 268):
-                        df.at[(subject, session, task, mask), 'lEff{0}'.format(j)] = leff[j]
-                        df.at[(subject, session, task, mask), 'clustCoeff{0}'.format(j)] = ccoef[j]
+                    for j in np.arange(1, 270):
+                        df.at[(subject, session, task, mask), 'lEff{0}'.format(j)] = leff[j-1]
+                        df.at[(subject, session, task, mask), 'clustCoeff{0}'.format(j)] = ccoef[j-1]
                     #df.to_csv(join(sink_dir, 'resting-state_graphtheory_shen+craddock.csv'), sep=',')
                     lab_notebook.at[(subject, session),'end'] = str(datetime.datetime.now())
                 except Exception as e:
