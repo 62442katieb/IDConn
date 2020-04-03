@@ -192,7 +192,7 @@ for subject in subjects:
                                 w = bct.threshold_proportional(corrmat, kappa)
                                 skewness = skew(bct.degrees_und(w))
                                 kappa += 0.01
-                            #df.at[(subject, sessions[i], task, conds[j], mask),'k_scale-free'] = kappa
+                            df.at[(subject, sessions[i], task, conds[j], mask),'k_scale-free'] = kappa
 
                             #reset kappa starting point
                             #calculate proportion of connections that need to be retained
@@ -210,4 +210,4 @@ for subject in subjects:
     except Exception as e:
         print(subject, 'didn\'t run, because', e)
 
-#df.to_csv(join(data_dir, 'phys-learn-fci_kappa_{0}-{1}.csv'.format(connectivity_metric, str(datetime.datetime.now()))), sep=',')
+df.to_csv(join(data_dir, 'phys-learn-fci_kappa_{0}-{1}.csv'.format(connectivity_metric, str(datetime.datetime.now()))), sep=',')
