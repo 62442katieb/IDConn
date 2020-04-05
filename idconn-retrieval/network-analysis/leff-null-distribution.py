@@ -194,12 +194,13 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '634']
 subjects = ['101', '102']
 
-sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
-data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
+#sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
+#data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
 #roi_dir = '/Users/kbottenh/Dropbox/Data/templates/shen2015/'
 #fig_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/figures/'
 
-#data_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
+data_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
+sink_dir = join(data_dir, 'null_models')
 
 shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
@@ -244,4 +245,4 @@ for session in sessions:
                     j += 1
                 null_dist.at[(sesh[session], task, conds[i], mask), 'mean'] = np.mean(eff_perm)
                 null_dist.at[(sesh[session], task, conds[i], mask), 'sdev'] = np.std(eff_perm)
-        null_dist.to_csv(join(sink_dir, 'local_efficiency', 'null_dist_effs.csv'))
+        null_dist.to_csv(join(sink_dir, 'null_dist-local_efficiency.csv'))
