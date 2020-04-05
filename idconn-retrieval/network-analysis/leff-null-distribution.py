@@ -4,22 +4,25 @@ from os.path import join, exists
 import bct
 import datetime
 
-def avg_corrmat(subjects, task, condition, session, atlas):
-    post_retr_conn = pd.DataFrame(columns=np.arange(0,268**2))
-
+def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
+    if atlas == "shen2015":
+        num_nodes = 268
+    if atlas == "craddock2012":
+        num_nodes = 270
+    conn = pd.DataFrame(columns=np.arange(0, num_nodes**2))
+    sesh = ['pre', 'post']
     for subject in subjects:
         try:
-            corrmat = np.genfromtxt(join(sink_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject,
-                                                                                                    session, 
-                                                                                                    task,
-                                                                                                    condition, 
-                                                                                                    atlas)),
-                                    delimiter=' ')
-            post_retr_conn.at[subject] = np.ravel(corrmat, order='F')
+            if task == "rest":
+                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}-{2}_network_corrmat_{3}.csv'.format(subject, session, task, atlas)), delimiter=",")
+            else:
+                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, conditions[i], atlas)), delimiter=' ')
+            #corrmat = np.genfromtxt(join(data_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
+            conn.at[subject] = np.ravel(corrmat, order='F')
         except Exception as e:
             print(subject, e)
-    avg_corrmat = post_retr_conn.mean().values.reshape((268,268), order='F')
-    avg_corrmat_df = pd.DataFrame(avg_corrmat, index=np.arange(1,269), columns=np.arange(1,269))
+    avg_corrmat = conn.mean().values.reshape((num_nodes,num_nodes), order='F')
+    avg_corrmat_df = pd.DataFrame(avg_corrmat, index=np.arange(1,num_nodes + 1), columns=np.arange(1,num_nodes + 1))
     return avg_corrmat_df
 
 def null_model_und_sign(W, bin_swaps=5, wei_freq=.1, seed=None):
@@ -192,15 +195,19 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
 subjects = ['101', '102']
 
 sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
-data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data'
-roi_dir = '/Users/kbottenh/Dropbox/Data/templates/shen2015/'
-fig_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/figures/'
+data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
+#roi_dir = '/Users/kbottenh/Dropbox/Data/templates/shen2015/'
+#fig_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/figures/'
 
-shen = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
+#data_dir = '/home/data/nbc/physics-learning/retrieval-graphtheory/output'
+
+shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = ['shen2015', 'craddock2012']
 
-tasks = {'retr': [{'conditions': ['Physics', 'General']},
+tasks = {'rest': [{'conditions': [None]}, 
+                  {'runs': [0,1]}],
+         'retr': [{'conditions': ['Physics', 'General']},
                   {'runs': [0,1]}], 
          'fci': [{'conditions': ['Physics', 'NonPhysics']},
                   {'runs': [0,1,2]}]}
@@ -221,7 +228,7 @@ for session in sessions:
             print(condition, datetime.datetime.now())
             for mask in masks:
                 print(mask, datetime.datetime.now())
-                avg_corr = avg_corrmat(subjects, task, condition, session, mask)
+                avg_corr = avg_corrmat(data_dir, subjects, task, condition, session, mask)
                 eff_perm = []
                 j = 1
                 while j < 3:
