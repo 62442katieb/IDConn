@@ -9,6 +9,7 @@ def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
         num_nodes = 268
     if atlas == "craddock2012":
         num_nodes = 270
+    print(atlas, num_nodes)
     conn = pd.DataFrame(columns=np.arange(0, num_nodes**2))
     sesh = ['pre', 'post']
     for subject in subjects:
@@ -16,7 +17,7 @@ def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
             if task == "rest":
                 corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}-{2}_network_corrmat_{3}.csv'.format(subject, session, task, atlas)), delimiter=",")
             else:
-                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, conditions[i], atlas)), delimiter=' ')
+                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
             #corrmat = np.genfromtxt(join(data_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
             conn.at[subject] = np.ravel(corrmat, order='F')
         except Exception as e:
@@ -168,16 +169,7 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1, seed=None):
                 Wv = np.delete(Wv, R)
 
     W0 = W0 + W0.T
-
-    rpos_in = np.corrcoef(np.sum(W * (W > 0), axis=0),
-                          np.sum(W0 * (W0 > 0), axis=0))
-    rpos_ou = np.corrcoef(np.sum(W * (W > 0), axis=1),
-                          np.sum(W0 * (W0 > 0), axis=1))
-    rneg_in = np.corrcoef(np.sum(-W * (W < 0), axis=0),
-                          np.sum(-W0 * (W0 < 0), axis=0))
-    rneg_ou = np.corrcoef(np.sum(-W * (W < 0), axis=1),
-                          np.sum(-W0 * (W0 < 0), axis=1))
-    return W0, (rpos_in[0, 1], rpos_ou[0, 1], rneg_in[0, 1], rneg_ou[0, 1])
+    return W0
 
 subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213',
             '214', '215', '216', '217', '218', '219', '320', '321', '322', '323',
@@ -192,7 +184,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
-subjects = ['101', '102']
+subjects = ['101', '102', '103']
 
 #sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
 #data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
@@ -206,9 +198,7 @@ shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = ['shen2015', 'craddock2012']
 
-tasks = {'rest': [{'conditions': [None]}, 
-                  {'runs': [0,1]}],
-         'retr': [{'conditions': ['Physics', 'General']},
+tasks = {'retr': [{'conditions': ['Physics', 'General']},
                   {'runs': [0,1]}], 
          'fci': [{'conditions': ['Physics', 'NonPhysics']},
                   {'runs': [0,1,2]}]}
@@ -234,7 +224,7 @@ for session in sessions:
                 j = 1
                 while j < 3:
                     effs = []
-                    W, _ = null_model_und_sign(avg_corr.values)
+                    W = null_model_und_sign(avg_corr.values)
                     for thresh in np.arange(0.21, 0.31, 0.03):
                         thresh_corr = bct.threshold_proportional(W, thresh)
                         leff = bct.efficiency_wei(thresh_corr)
