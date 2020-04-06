@@ -38,7 +38,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212',
 #610 X611 612 613 614 615 X616 617 618 619 620 621 622 623 624 625 626 627 X628 629 630 631 633 634
 #errors in fnirt-to-mni: 213, 322, 329, 332, 452, 456, 457, 575, 579, 580, 590, 611, 616, 628
 #subjects without post-IQ measure: 452, 461, 501, 575, 576, 579, 583, 611, 616, 628, 105, 109, 211, 213, 322, 326, 329, 332
-#subjects = ['101','103']
+subjects = ['101','103']
 
 
 #data_dir = '/home/data/nbc/physics-learning/data/pre-processed'
@@ -91,7 +91,7 @@ for subject in subjects:
                     for run in tasks[task][1]['runs']:
                         print run
                         mask_file = join(data_dir, sessions[i], subject,'{0}-session-{1}_{2}-{3}_{4}.nii.gz'.format(subject, i, task, run, mask))
-                        #print(mask_file)
+                        print(mask_file)
                         if task == 'fci':
                             if not exists(mask_file):
                                 print(mask_file, 'doesn\'t exist, so we\'re gonna make one')
@@ -161,7 +161,7 @@ for subject in subjects:
                         #and now we slice into conditions
                         for condition in conditions:
                             if not exists(join(data_dir, sessions[i], subject,'{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, i, task, condition, mask))):
-                                print('{0}-{1}-{2}'.format(task, run, condition))
+                                print('{0}-{1}-{2}-{3}'.format(task, run, condition, mask))
                                 run_cond['{0}-{1}-{2}'.format(task, run, condition)] = np.vstack((timeseries[timing['{0}-{1}'.format(run, condition)][0,0].astype(int):(timing['{0}-{1}'.format(run, condition)][0,0]+timing['{0}-{1}'.format(run, condition)][0,1]+1).astype(int), :], timeseries[timing['{0}-{1}'.format(run, condition)][1,0].astype(int):(timing['{0}-{1}'.format(run, condition)][1,0]+timing['{0}-{1}'.format(run, condition)][1,1]+1).astype(int), :], timeseries[timing['{0}-{1}'.format(run, condition)][2,0].astype(int):(timing['{0}-{1}'.format(run, condition)][2,0]+timing['{0}-{1}'.format(run, condition)][2,1]+1).astype(int), :]))
                                 print('extracted signals for {0}, run {1}, {2}'.format(task, run, condition), run_cond['{0}-{1}-{2}'.format(task, run, condition)].shape)
                             else:
@@ -188,7 +188,7 @@ for subject in subjects:
                             #before degree dist. ceases to be scale-free
                             kappa = 0.01
                             skewness = 1
-                            while skewness > 0.3:
+                            while abs(skewness) > 0.3:
                                 w = bct.threshold_proportional(corrmat, kappa)
                                 skewness = skew(bct.degrees_und(w))
                                 kappa += 0.01
@@ -204,6 +204,7 @@ for subject in subjects:
                                 [comp, num] = bct.get_components(w)
                                 num = np.unique(comp).shape[0]
                                 kappa += 0.01
+                            df.at[(subject, sessions[i], task, conds[j], mask),'k_connected'] = kappa
                         else:
                             pass
                             #df.at[(subject, sessions[i], task, conds[j], mask),'k_connected'] = kappa
