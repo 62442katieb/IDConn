@@ -16,7 +16,7 @@ def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
             if task == "rest":
                 corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}-{2}_network_corrmat_{3}.csv'.format(subject, session, task, atlas)), delimiter=",")
             else:
-                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, conditions[i], atlas)), delimiter=' ')
+                corrmat = np.genfromtxt(join(data_dir, sesh[session], subject, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
             #corrmat = np.genfromtxt(join(data_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
             conn.at[subject] = np.ravel(corrmat, order='F')
         except Exception as e:
@@ -192,7 +192,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
-subjects = ['101', '102']
+subjects = ['101', '102', '103']
 
 #sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
 #data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
@@ -206,9 +206,7 @@ shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = ['shen2015', 'craddock2012']
 
-tasks = {'rest': [{'conditions': [None]}, 
-                  {'runs': [0,1]}],
-         'retr': [{'conditions': ['Physics', 'General']},
+tasks = {'retr': [{'conditions': ['Physics', 'General']},
                   {'runs': [0,1]}], 
          'fci': [{'conditions': ['Physics', 'NonPhysics']},
                   {'runs': [0,1,2]}]}
