@@ -37,7 +37,7 @@ masks = ['shen2015', 'craddock2012']
 
 tasks = {'reas': [{'conditions': ['Reasoning', 'Baseline']},
                   {'runs': [0,1]}],
-         'retr': [{'conditions': ['Physics', 'General']},
+         'retr': [{'conditions': ['Physics', 'General' ]},
                   {'runs': [0,1]}], 
          'fci': [{'conditions': ['Physics', 'NonPhysics']},
                   {'runs': [0,1,2]}]}

@@ -8,7 +8,7 @@ def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
     if atlas == "shen2015":
         num_nodes = 268
     if atlas == "craddock2012":
-        num_nodes = 270
+        num_nodes = 268
     conn = pd.DataFrame(columns=np.arange(0, num_nodes**2))
     sesh = ['pre', 'post']
     for subject in subjects:
@@ -192,7 +192,7 @@ subjects = ['101', '102', '103', '104', '106', '107', '108', '110', '212', '213'
             '613', '614', '615', '616', '617', '618', '619', '620', '621', '622',
             '623', '624', '625', '626', '627', '628', '629', '630', '631', '633',
             '634']
-subjects = ['101', '102', '103']
+#subjects = ['101', '102', '103']
 
 #sink_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
 #data_dir = '/Users/kbottenh/Dropbox/Projects/physics-retrieval/data/output'
@@ -206,10 +206,10 @@ shen = '/home/kbott006/physics-retrieval/shen2015_2mm_268_parcellation.nii.gz'
 craddock = '/home/kbott006/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 masks = ['shen2015', 'craddock2012']
 
-tasks = {'retr': [{'conditions': ['Physics', 'General']},
-                  {'runs': [0,1]}], 
+tasks = {'retrieval': [{'conditions': ['Physics', 'General']},
+                       {'runs': ['01','02']}], 
          'fci': [{'conditions': ['Physics', 'NonPhysics']},
-                  {'runs': [0,1,2]}]}
+                  {'runs': ['01', '02', '03']}]}
 
 sessions = [0,1]
 sesh = ['pre', 'post']
