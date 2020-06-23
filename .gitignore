@@ -1,3 +1,4 @@
+submit-*
 *.ipynb_checkpoints/*
 applyxfm.sub
 bad-qa.png
