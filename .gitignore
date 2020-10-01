@@ -1,4 +1,4 @@
-submit-*
+**/submit-*
 *.ipynb_checkpoints/*
 applyxfm.sub
 bad-qa.png
@@ -24,6 +24,5 @@ testing-output
 assets/*
 data/*
 gender-id-q-scoring.py
-*.DS_Store
-*/.DS_Store
+**/.DS_Store
 .DS_Store
