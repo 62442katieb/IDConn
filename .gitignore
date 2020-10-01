@@ -7,5 +7,5 @@ assets/*
 data/*
 **/.DS_Store
 .DS_Store
-.vscode
+
 .ipynb_checkpoints
