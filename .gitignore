@@ -1,5 +1,4 @@
 *.ipynb_checkpoints/*
-applyxfm.sub
 bad-qa.png
 cp-corrmats.sh
 cp-motion-plots.sh
