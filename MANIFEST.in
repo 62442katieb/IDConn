@@ -1,0 +1,2 @@
+include versioneer.py
+include IDConn/_version.py
