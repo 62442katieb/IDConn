@@ -118,7 +118,7 @@ comparisons
 of interest to compute individual measures of connectivity and/or topology and assesses their 
 relation with individual demographic, behavioral, and other measures to provide robust statistical 
 inference of individual differences in the brain that relate to behavior, etc., and figures 
-thereof.\label{fig:wfdiagram}](figure1.png)
+thereof.\label{fig:wfdiagram}](figure1.svg)
 
 Finally, `IDConn` has built-in recommended "best practices" for 
 - multiple comparisons corrections
