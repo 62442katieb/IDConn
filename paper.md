@@ -66,7 +66,13 @@ for sophisticated, rigorous computation and extraction of connectivity and
 graph theoretic measures, for linear regression-based analyses with behavioral,
 demographic, psychophysiological, or other continuous variables. Furthermore, 
 it conforms with the Brain Imaging Data Structure (BIDS; [@Gorgolewski:2016])
-for optimal redistribution and sharing of pipeline outputs.
+for optimal redistribution and sharing of pipeline outputs. While there are a 
+host of extant open-source software tools for analyzing fMRI data, many 
+assume a level of code literacy and related skills that are not common in 
+researchers from the psychological sciences and less computational backgrounds, 
+in general. `IDConn` fills this gap and provideds an open, reproducible option 
+for data analysis that incorporates high-quality software tools and up-to-date
+"best practices" for analyzing fMRI data.
 
 `IDConn` was designed for applications in human neuroimaging research, providing
 a flexible, open data analysis stream that takes in preprocessed fMRI data and 
