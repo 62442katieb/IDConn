@@ -1,5 +1,5 @@
 ---
-title: 'IDConn: Individual differences in functional connectivity'
+title: 'IDConn: Individual differences in functional brain connectivity'
 tags:
   - Python
   - fMRI
@@ -7,7 +7,7 @@ tags:
   - human neuroimaging
   - 
 authors:
-  - name: Katherine L. Bottenhorn^[Custom footnotes for e.g. denoting who the corresponding author is can be included like this.]
+  - name: Katherine L. Bottenhorn
     orcid: 0000-0002-7796-8795
     affiliation: 1
   - name: Matthew T. Sutherland
@@ -24,10 +24,6 @@ affiliations:
 date: 02 October 2020
 bibliography: paper.bib
 
-# Optional fields if submitting to a AAS journal too, see this blog post:
-# https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
-aas-doi: 10.3847/xxxxx <- update this with the DOI from AAS once you know it.
-aas-journal: Astrophysical Journal <- The name of the AAS journal.
 ---
 
 # Summary
