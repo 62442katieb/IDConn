@@ -73,12 +73,18 @@ a flexible, open data analysis stream that takes in preprocessed fMRI data and
 provdes computed graphs, derived graph measures, statistical models and the results
 thereof, and, optionally, figures presenting these results, all in an organized,
 sharing-friendly format for optimal reproducibility and transparency. It has already 
-been used in a number of scientific publications [@Gonzalez&Bottenhorn:2019; 
-@Bottenhorn:2020]. Bringing together robust tools for fMRI data processing, 
-dataset cleaning, and statistical inference, `IDConn` will enable researchers to 
-perform statistically-robust assessments of individual differences in functional
-brain connectivity and organization by neuroimaging researchers from the Python-naiive 
-to developers.
+been used in a few scientific publications [@Gonzalez:2019; @Bottenhorn:2020]. 
+-@Gonzales:2019 uses an early iteration of `IDConn` to assess how differences in resting 
+state functional connectivity between canonical brain networks are related to generalized 
+anxiety and anxiety around Science, Technology, Engineering, and Math (i.e., STEM anxiety) 
+and how these relationships may differ between male and female university students before 
+and after their first physics class. Similarly, -@Bottenhorn:2020 uses `IDConn` to assess 
+how task-based functional connectivity and network topology support relationships between 
+intelligence and academic achievement during physics-related cognition. Bringing together 
+robust tools for fMRI data processing, dataset cleaning, and statistical inference, `IDConn` 
+will enable researchers to perform statistically-robust assessments of individual differences 
+in functional brain connectivity and organization by neuroimaging researchers from the 
+Python-naiive to developers.
 
 # State of the Field
 
