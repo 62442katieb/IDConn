@@ -14,7 +14,7 @@ with warnings.catch_warnings(record=True) as w:
     from . import data_wrangling
     from . import figures
     from . import network_analysis
-    from . import preprocessing
+    #from . import preprocessing
     from . import statistics
     from . import utils
     from . import io
@@ -26,7 +26,7 @@ with warnings.catch_warnings(record=True) as w:
         "data_wrangling",
         "figures",
         "network_analysis",
-        "preprocessing",
+        #"preprocessing",
         "statistics",
         "utils",
         "io",
