@@ -1,14 +1,13 @@
 import setuptools
 import versioneer
 
-setuptools.setup(version=versioneer.get_version(),
-                 cmdclass=versioneer.get_cmdclass())
+setuptools.setup(version=versioneer.get_version(), cmdclass=versioneer.get_cmdclass())
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="IDConn", # Replace with your own username
+    name="IDConn",  # Replace with your own username
     version="0.2dev",
     author="Katie Bottenhorn",
     author_email="katie.bottenhorn@gmail.com",
@@ -22,5 +21,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.6",
 )
