@@ -29,7 +29,7 @@ setuptools.setup(
         'nilearn',
         'sklearn',
         'pandas',
-        'nibable',
+        'nibabel',
         'bctpy',
         'pybids',
         'networkx'
