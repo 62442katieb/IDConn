@@ -11,9 +11,9 @@ logging.basicConfig(level=logging.INFO)
 with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("ignore")
     from . import connectivity
-    from . import data_wrangling
+    from . import data
     from . import figures
-    from . import network_analysis
+    from . import networking
 
     # from . import preprocessing
     from . import statistics
@@ -24,9 +24,9 @@ with warnings.catch_warnings(record=True) as w:
 
     __all__ = [
         "connectivity",
-        "data_wrangling",
+        "data",
         "figures",
-        "network_analysis",
+        "networking",
         # "preprocessing",
         "statistics",
         "utils",
