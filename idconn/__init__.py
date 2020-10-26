@@ -16,9 +16,9 @@ with warnings.catch_warnings(record=True) as w:
     from . import networking
 
     # from . import preprocessing
-    from . import statistics
-    from . import utils
-    from . import io
+    #from . import statistics
+    #from . import utils
+    #from . import io
 
     __version__ = get_versions()["version"]
 
@@ -29,8 +29,8 @@ with warnings.catch_warnings(record=True) as w:
         "networking",
         # "preprocessing",
         "statistics",
-        "utils",
-        "io",
+        #"utils",
+        #"io",
         "__version__",
     ]
 
