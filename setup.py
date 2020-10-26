@@ -22,16 +22,16 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.6",
-    #dependency handling
+    # dependency handling
     install_requires=[
-        'numpy',
-        'scipy',
-        'nilearn',
-        'sklearn',
-        'pandas',
-        'nibabel',
-        'bctpy',
-        'pybids',
-        'networkx'
+        "numpy",
+        "scipy",
+        "nilearn",
+        "sklearn",
+        "pandas",
+        "nibabel",
+        "bctpy",
+        "pybids",
+        "networkx",
     ],
 )
