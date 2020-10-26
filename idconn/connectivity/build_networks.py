@@ -8,7 +8,7 @@ from nilearn import input_data, datasets, connectome
 
 #from .utils import contrast
 
-def atlas_picker(atlas, path=None, key=None):
+def atlas_picker(atlas, path, key=None):
     """Takes in atlas name and path to file, if local, returns
     nifti-like object (usually file path to downloaded atlas),
     and atlas name (for tagging output files). If atlas is from
@@ -23,8 +23,9 @@ def atlas_picker(atlas, path=None, key=None):
         voxels. If using an atlas fetchable by Nilearn, atlas name 
         must match the function `fetch_atlas_[name]`.
     path : str
-        Path to the atlas specified. If None, will try to fetch 
-        the specified atlas from `nilearn.datasets`. OPTIONAL
+        Path to the atlas specified, if not using a dataset from Nilearn. 
+        If using `nilearn.datasets` to fetch an atlas, will revert to 
+        `derivatives/idconn` path.
     key : str
         Atlas-specific key for denoting which of multiple versions
         will be used. Default behavior is described in the "atlases"
@@ -46,7 +47,14 @@ def atlas_picker(atlas, path=None, key=None):
     nilearn_4d = ['allen_2011', '']
     if atlas in nilearn_3d:
         if atlas == 'craddock_2012':
-
+            atlas_dict = datasets.fetch_atlas_craddock_2012(data_dir=path)
+            atlas_path = atlas_dict['tcorr_2level']
+            nifti = nib.load(atlas_path)
+            nifti_arr = nifti.get_fdata()
+            #selecting one volume of the nifti, each represent different granularity of parcellation
+            #selecting N = 270, the 27th volume per http://ccraddock.github.io/cluster_roi/atlases.html
+            nifti = nib.Nifti1Image(nifti_arr[:,:,:,26], nifti.affine)
+            nifti.to_filename()
 
     return atlas, path, dimension
 
@@ -94,6 +102,11 @@ def confounds_merger(confounds):
     return out_file
 
 def bids_io(root_dir, validate=True, absolute_paths=True, derivatives='fmriprep'):
+    """
+    Wraps pybids to provide relevant input for IDConn and output paths for results.
+    Not implemented yet.
+    """
+    pass
     
 
 def task_networks(dset_dir, subject, session, task, event_related, conditions, runs, connectivity_metric, space, atlas, confounds):
@@ -186,13 +199,13 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
                                       '{0}_{1}_{2}_{3}_events.tsv'.format(subject, session, task, run)), sep='\t')
         else:
             print('cannot find task timing file...')
-	    timing = None
-
+        timing = None
+        
         if event_related:
             highpass = 1 / 66.
         else:
             highpass = 1 / ((timing.iloc[1]['onset'] - timing.iloc[0]['onset']) * 2)
-	    try:        
+        try:
             #for each parcellation, extract BOLD timeseries
             masker = NiftiLabelsMasker(atlas_file, standardize=True, high_pass=highpass, t_r=2., verbose=1)
             timeseries = masker.fit_transform(bold_file, confounds_file)
@@ -201,7 +214,7 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
             print('trying to run masker but', e)
         #load timing file 
         #update to use pyBIDS + layout
-	    try:
+        try:
             #and now we slice into conditions
             for condition in conditions:
                 blocks = []
@@ -243,11 +256,11 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
                                 '{0}_{1}_{2}-{3}_{4}-corrmat.tsv'.format(subject, session, task, condition, atlas))
         except Exception as e:
             print('trying to make and save corrmat, but', e)
-	try:
-            corrmat_df.to_csv(corrmat_file, sep='\t')
+        try:
+                corrmat_df.to_csv(corrmat_file, sep='\t')
         except Exception as e:
-	    print('saving corrmat...', e)
-	return corrmat_file
+            print('saving corrmat...', e)
+        return corrmat_file
 
 def rest_networks(dset_dir, subject, session, runs, connectivity_metric, space, atlas, confounds):
     """
@@ -338,13 +351,13 @@ def rest_networks(dset_dir, subject, session, runs, connectivity_metric, space, 
                                       '{0}_{1}_{2}_{3}_events.tsv'.format(subject, session, task, run)), sep='\t')
         else:
             print('cannot find task timing file...')
-	    timing = None
-
+        timing = None
+        
         if event_related:
             highpass = 1 / 66.
         else:
             highpass = 1 / ((timing.iloc[1]['onset'] - timing.iloc[0]['onset']) * 2)
-	    try:        
+        try:
             #for each parcellation, extract BOLD timeseries
             masker = NiftiLabelsMasker(atlas_file, standardize=True, high_pass=highpass, t_r=2., verbose=1)
             timeseries = masker.fit_transform(bold_file, confounds_file)
@@ -353,7 +366,7 @@ def rest_networks(dset_dir, subject, session, runs, connectivity_metric, space, 
             print('trying to run masker but', e)
         #load timing file 
         #update to use pyBIDS + layout
-	    try:
+        try:
             #and now we slice into conditions
             for condition in conditions:
                 blocks = []
@@ -395,8 +408,8 @@ def rest_networks(dset_dir, subject, session, runs, connectivity_metric, space, 
                                 '{0}_{1}_{2}-{3}_{4}-corrmat.tsv'.format(subject, session, task, condition, atlas))
         except Exception as e:
             print('trying to make and save corrmat, but', e)
-	try:
+        try:
             corrmat_df.to_csv(corrmat_file, sep='\t')
         except Exception as e:
-	    print('saving corrmat...', e)
-	return corrmat_file
+	        print('saving corrmat...', e)
+    return corrmat_file
