@@ -37,3 +37,4 @@ var/
 *.manifest
 *.spec
 **.pyc
+**.egg*
