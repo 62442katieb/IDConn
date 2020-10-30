@@ -38,3 +38,4 @@ var/
 *.spec
 **.pyc
 **.egg*
+**/__pycache__/**
