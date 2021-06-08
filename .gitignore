@@ -10,6 +10,23 @@ data/*
 .vscode
 .ipynb_checkpoints
 
+examples/connectivity/atlas_picker.ipynb
+idconn/connectivity/retrieval-ID-pipeline-regionwise-exceptions.py
+idconn/connectivity/retrieval-ID-pipeline-regionwise.py
+idconn/connectivity/retrieval-ID-pipeline.py
+idconn/connectivity/task-networks.py
+idconn/data/add-Eglob-to-df.py
+idconn/data/add-Eloc-to-df.py
+idconn/data/add-brain_cov-to-df.py
+idconn/networking/exploratory-ntwk.py
+idconn/networking/exploratory-regn.py
+idconn/networking/resting-state-graph-theory-nodal.py
+idconn/networking/resting-state-graph-theory.py
+idconn/networking/task-graph-theory-fci.py
+idconn/networking/task-graph-theory-local-nodal.py
+idconn/networking/task-graph-theory-local.py
+idconn/networking/task-graph-theory-nodal.py
+
 docs/_build/
 docs/generated/
 docs/modules/
