@@ -10,6 +10,8 @@ data/*
 .vscode
 .ipynb_checkpoints
 
+idconn/preprocessing/**
+
 examples/connectivity/atlas_picker.ipynb
 idconn/connectivity/retrieval-ID-pipeline-regionwise-exceptions.py
 idconn/connectivity/retrieval-ID-pipeline-regionwise.py
