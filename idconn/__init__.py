@@ -12,7 +12,7 @@ with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("ignore")
     from . import connectivity
     from . import data
-    from . import figures
+    #from . import figures
     from . import networking
 
     # from . import preprocessing
@@ -25,10 +25,10 @@ with warnings.catch_warnings(record=True) as w:
     __all__ = [
         "connectivity",
         "data",
-        "figures",
+        #"figures",
         "networking",
         # "preprocessing",
-        "statistics",
+        #"statistics",
         # "utils",
         # "io",
         "__version__",
