@@ -24,10 +24,7 @@ def impute(data, max_iter):
         max_iter=10000, skip_complete=True, verbose=1, tol=5e-3, n_nearest_features=1000
     )
     imputed = impute_pls.fit_transform(df)
-    imp_df = pd.DataFrame(
-        imputed,
-        columns=data.drop(non_numeric, axis=1), axis=1).columns,
-        index=data.index,
+    imp_df = pd.DataFrame(imputed,columns=data.drop(non_numeric, axis=1).columns, index=data.index,
     )
     return imp_df
 
