@@ -4,14 +4,9 @@ from os.path import join, exists
 import bct
 import datetime
 
-
-def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
-    if atlas == "shen2015":
-        num_nodes = 268
-    if atlas == "craddock2012":
-        num_nodes = 268
-    conn = pd.DataFrame(columns=np.arange(0, num_nodes ** 2))
-    sesh = ["pre", "post"]
+def avg_corrmat(layout, task, session):
+    subjects = layout.get_subjects(task=task,session=session)
+    corrmats = {}
     for subject in subjects:
         try:
             if task == "rest":
@@ -39,16 +34,14 @@ def avg_corrmat(data_dir, subjects, task, condition, session, atlas):
                     delimiter=" ",
                 )
             # corrmat = np.genfromtxt(join(data_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
-            conn.at[subject] = np.ravel(corrmat, order="F")
+            corrmats[subject] = corrmat
         except Exception as e:
             print(subject, e)
-    avg_corrmat = conn.mean().values.reshape((num_nodes, num_nodes), order="F")
-    avg_corrmat_df = pd.DataFrame(
-        avg_corrmat,
-        index=np.arange(1, num_nodes + 1),
-        columns=np.arange(1, num_nodes + 1),
-    )
-    return avg_corrmat_df
+    data = list(corrmats.values())
+    stacked_corrmats = np.array(data)
+    print('Stacked corrmats have dimensions', stacked_corrmats.shape)
+    avg_corrmat = np.mean(stacked_corrmats, axis=0)
+    return avg_corrmat
 
 
 def null_model_und_sign(W, bin_swaps=5, wei_freq=0.1, seed=None):
@@ -201,51 +194,28 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=0.1, seed=None):
     W0 = W0 + W0.T
     return W0
 
-subjects = ['101', '102']
-
-masks = ["shen2015", "craddock2012"]
-
-tasks = {
-    "retrieval": [{"conditions": ["Physics", "General"]}, {"runs": ["01", "02"]}],
-    "fci": [{"conditions": ["Physics", "NonPhysics"]}, {"runs": ["01", "02", "03"]}],
-}
-
-sessions = [0, 1]
-sesh = ["pre", "post"]
-conds = ["physics", "control"]
-
-# null distribtuions for standardization
-index = pd.MultiIndex.from_product([sesh, tasks.keys(), conds, masks])
-null_dist = pd.DataFrame(index=index, columns=["mean", "sdev"])
-for session in sessions:
-    print(session, datetime.datetime.now())
-    for task in tasks.keys():
-        print(task, datetime.datetime.now())
-        for i in np.arange(0, len(tasks[task][0]["conditions"])):
-            condition = tasks[task][0]["conditions"][i]
-            print(condition, datetime.datetime.now())
-            for mask in masks:
-                print(mask, datetime.datetime.now())
-                avg_corr = avg_corrmat(
-                    data_dir, subjects, task, condition, session, mask
-                )
-                eff_perm = []
-                j = 1
-                while j < 3:
-                    effs = []
-                    W = null_model_und_sign(avg_corr.values)
-                    for thresh in np.arange(0.21, 0.31, 0.03):
-                        thresh_corr = bct.threshold_proportional(W, thresh)
-                        leff = bct.efficiency_wei(thresh_corr)
-                        effs.append(leff)
-                    effs_arr = np.asarray(effs)
-                    leff_auc = np.trapz(effs_arr, dx=0.03, axis=0)
-                    eff_perm.append(leff_auc)
-                    j += 1
-                null_dist.at[(sesh[session], task, conds[i], mask), "mean"] = np.mean(
-                    eff_perm
-                )
-                null_dist.at[(sesh[session], task, conds[i], mask), "sdev"] = np.std(
-                    eff_perm
-                )
-        
+def generate_null(layout, task, session, mask):
+    null_dist = pd.DataFrame(index=subjects, columns=["mean", "sdev"])
+    avg_corr = avg_corrmat(
+        layout, task, session, mask
+    )
+    eff_perm = []
+    j = 1
+    while j < 3:
+        effs = []
+        W = null_model_und_sign(avg_corr.values)
+        for thresh in np.arange(0.21, 0.31, 0.03):
+            thresh_corr = bct.threshold_proportional(W, thresh)
+            leff = bct.efficiency_wei(thresh_corr)
+            effs.append(leff)
+        effs_arr = np.asarray(effs)
+        leff_auc = np.trapz(effs_arr, dx=0.03, axis=0)
+        eff_perm.append(leff_auc)
+        j += 1
+    null_dist.at[(sesh[session], task, conds[i], mask), "mean"] = np.mean(
+        eff_perm
+    )
+    null_dist.at[(sesh[session], task, conds[i], mask), "sdev"] = np.std(
+        eff_perm
+    )
+    return null_dist
