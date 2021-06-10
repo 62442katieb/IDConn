@@ -209,7 +209,7 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
             print('saving corrmat...', e)
         return corrmat_file
 
-def estimate_connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', space='MNI152NLin2009cAsym', confounds=None, out_dir=None):
+def estimate_connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
 
     """
     Makes connectivity matrices per subject per session per task per condition.
@@ -248,7 +248,7 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
         deriv_dir = out_dir
     atlas_name = basename(atlas).rsplit('.', 2)[0]
     # use pybids here to grab # of runs and preproc bold filenames
-    connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity)
+    connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
     bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
     print(f'BOLD files found at {bold_files}')
     confounds_files = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task)
