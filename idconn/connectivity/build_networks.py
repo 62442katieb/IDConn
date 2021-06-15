@@ -276,8 +276,8 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
             print('run = ', run)
             # read in events file for this subject, task, and run
             event_file = layout.get(return_type='filename', suffix='events', task=task, subject=subject, run=run, session=session)
-            print('event file =', event_file)
-            timing = pd.read_csv(event_file, header=0, index_col=0, sep='\t')
+            print('event file =', str(event_file))
+            timing = pd.read_csv(str(event_file), header=0, index_col=0, sep='\t')
             timing.sort_values('onset', axis=1)
 
             confounds_file = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task, run=run, extension='tsv')
