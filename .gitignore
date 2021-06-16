@@ -9,6 +9,7 @@ data/*
 .DS_Store
 .vscode
 .ipynb_checkpoints
+**/__pycache__/**
 
 idconn/preprocessing/**
 **.R
