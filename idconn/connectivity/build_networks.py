@@ -121,7 +121,6 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
     event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
     timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
     conditions = timing['trial_type'].unique()
-    
 
     run_cond = {}
     corrmats = {}
@@ -166,7 +165,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
                 blocks = []
                 cond_timing = timing[timing['trial_type'] == condition]
                 for i in cond_timing.index:
-                    blocks.append((cond_timing.loc[i]['onset'] / 2, ((cond_timing.loc[i]['onset'] + cond_timing.loc[i]['duration']) / 2) + 1))
+                    blocks.append((cond_timing.loc[i]['onset'] / tr, ((cond_timing.loc[i]['onset'] + cond_timing.loc[i]['duration']) / tr) + 1))
                 if len(blocks) > 1:
                     run_cond[condition][run] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
                 if len(blocks) > 2:
@@ -175,13 +174,16 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
                     #print('extracted signals for {0}, {1}, {2}'.format(task, run, condition), run_cond['{0}-{1}'.format(run, condition)].shape)
                 else:
                     pass
+                print(f'Making correlation matrix for {run}, {condition}.')
                 corrmats[condition][run] = connectivity_measure.fit_transform([run_cond[condition][run]])[0]
         except Exception as e:
             print('trying to slice and dice, but', e)
     #and paste together the timeseries from each run together per condition
     files = []
     avg_corrmats = {}
+    print('Corrmats per run per condition have been made!')
     for condition in conditions:
+        print(f'Merging corrmats for {task}-{condition}...')
         data = list(corrmats[condition].values())
         stacked_corrmats = np.array(data)
         print('Stacked corrmats have dimensions', stacked_corrmats.shape)
