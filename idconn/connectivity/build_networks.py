@@ -56,7 +56,7 @@ def confounds_merger(confounds):
     return out_file
     
 
-def task_networks(dset_dir, subject, session, task, event_related, conditions, runs, connectivity_metric, space, atlas, confounds):
+def task_networks(layout, subject, session, task, connectivity_metric, space, atlas, confounds):
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
@@ -69,10 +69,6 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
         Session of data collection. If there's only one session, we'll find it.
     task : str
         Name of task fMRI scan from which networks will be calculated.
-    conditions : list-like
-        Conditions of the task for which networks will be separated.
-    runs : list-like, optional
-        Runs of the task, will be combined to calculate networks.
     connectivity_metric : {"correlation", "partial correlation", "tangent",\
                            "covariance", "precision"}, optional
         The matrix kind. Passed to Nilearn's `ConnectivityMeasure`.
@@ -83,8 +79,6 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
         If you want to grab an atlas using Nilearn, this is the name of the atlas and 
         must match the corresponding function `fetch_atlas_[name]` in `nilearn.datasets`. 
         If you have your own atlas, this is the path to that nifti file.`
-    atlas_key : str, optional
-        If grabbing an atlas from Nilearn, key that corresponds to a specific version of the atlas specified with `atlas`.
     confounds : list-like
         Filenames of confounds files.
     Returns
@@ -93,46 +87,47 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
         Filename of merged confounds .tsv file
     """
     #version = '0.1.1'
-    if not 'sub' in subject:
-        subject = 'sub-{0}'.format(subject)
-    if not 'run' in runs[0]:
-        for i in np.arange(0, len(runs)):
-            runs[i] = 'run-{0}'.format(runs[i])
-    if not 'ses' in session:
-        session = 'ses-{0}'.format(session)
-    if not 'task' in task:
-        task = 'task-{0}'.format(task)
-    if not 'atlas' in atlas:
-        atlas = 'atlas-{0}'.format(atlas)
-    if not 'space' in space:
-        space = 'space-{0}'.format(space)
-    subj_dir = join(dset_dir, subject, session, 'func')
-    preproc_dir = join(dset_dir, 'derivatives/idconn/preproc', subject, session, 'func') #FIX THIS! SHOULD BE FMRIPREP DIR
-    deriv_dir = join(dset_dir, 'derivatives/idconn/{0}'.format(version), subject, session, 'func')
     try:
-        if not exists(join(dset_dir, 'derivatives/idconn/{0}'.format(version))):
-            makedirs(join(dset_dir, 'derivatives/idconn/{0}'.format(version)))
-        if not exists(join(dset_dir, 'derivatives/idconn/{0}'.format(version), subject)):
-            makedirs(join(dset_dir, 'derivatives/idconn/{0}'.format(version), subject))
-        if not exists(join(dset_dir, 'derivatives/idconn/{0}'.format(version), subject, session)):
-            makedirs(join(dset_dir, 'derivatives/idconn/{0}'.format(version), subject, session))
-        if not exists(deriv_dir):
-            makedirs(deriv_dir)
-    except Exception as e:
-	    print('making dirs error', e)
+        version = idconn.__version__
+    except:
+        version = 'test'
+    if '.nii' in atlas:
+        assert exists(atlas), f'Mask file does not exist at {atlas}'
+    
+    if not out_dir:
+        deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
+    else:
+        deriv_dir = out_dir
+    atlas_name = basename(atlas).rsplit('.', 2)[0]
+    # use pybids here to grab # of runs and preproc bold filenames
+    connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
+    bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
+    print(f'BOLD files found at {bold_files}')
+    confounds_files = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task)
+
+    runs = []
+    if len(bold_files) > 1:
+        for i in range(0, len(bold_files)):
+            assert exists(bold_files[i]), "Preprocessed bold file(s) does not exist at {0}".format(bold_files)
+            runs.append(layout.parse_file_entities(bold_files[i])['run'])
+    else:
+        runs = None
+    print(f'Found runs: {runs}')
+
+    out = join(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func')
+    if not exists(out):
+            makedirs(out)
+    
+    event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
+    timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
+    conditions = timing['trial_type'].unique()
+	
+    
     run_cond = {}
     for run in runs:
         bold_file = join(fmriprep_dir, subject, session, 'func', '{0}_{1}_{2}_{3}_{4}_desc-preproc_bold.nii.gz'.format(subject, session, task, run, space))
         assert exists(bold_file), "preprocessed bold file does not exist at {0}".format(bold_file)
-        if space == 'native':
-            atlas_file = join(preproc_dir,
-                              '{0}_{1}_{2}_{3}_{4}.nii.gz'.format(subject, session, task, run, atlas))
-            assert exists(atlas_file), 'atlas/parcellation not found at {0}'.format(atlas)
-        elif 'mni' in space:
-            atlas, atlas_file, dim = atlas_picker(atlas, path=join(dset_dir, 'derivatives/idconn/{0}'.format(version)), key=key)
-            #add in option here to use nilearn-grabbed atlases
-        elif 'MNI' in space:
-            atlas, atlas_file, dim = atlas_picker(atlas, path=join(dset_dir, 'derivatives/idconn/{0}'.format(version)), key=key)
+        
         #LATER: PRINT OVERLAY OF MASK ON EXAMPLE FUNC
         confounds_json = join()
         #load timing file 
@@ -146,12 +141,8 @@ def task_networks(dset_dir, subject, session, task, event_related, conditions, r
                                       '{0}_{1}_{2}_{3}_events.tsv'.format(subject, session, task, run)), sep='\t')
         else:
             print('cannot find task timing file...')
-        timing = None
+            timing = None
         
-        if event_related:
-            highpass = 1 / 66.
-        else:
-            highpass = 1 / ((timing.iloc[1]['onset'] - timing.iloc[0]['onset']) * 2)
         try:
             #for each parcellation, extract BOLD timeseries
             masker = NiftiLabelsMasker(atlas_file, standardize=True, high_pass=highpass, t_r=2., verbose=1)
@@ -266,6 +257,7 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
     if not exists(out):
             makedirs(out)
     
+    
     event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
     timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
     conditions = timing['trial_type'].unique()
@@ -306,23 +298,6 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
                 timeseries = masker.fit_transform(bold_file[0], confounds_fname)   
             except Exception as e:
                 print('ERROR: Trying to extract BOLD signals, but', e)
-            try:
-            #and now we slice into conditions
-                for condition in conditions:
-                    blocks = []
-                    cond_timing = timing[timing['trial_type'] == condition]
-                    for i in cond_timing.index:
-                        blocks.append((cond_timing.loc[i]['onset'] / tr, ((cond_timing.loc[i]['onset'] + cond_timing.loc[i]['duration']) / tr) + 1))
-                    if len(blocks) > 1:
-                        run_cond['{0}-{1}'.format(run, condition)] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
-                    if len(blocks) > 2:
-                        for i in np.arange(2,len(blocks)):
-                            run_cond['{0}-{1}'.format(run, condition)] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
-                        print('extracted signals for {0}, {1}, {2}'.format(task, run, condition), run_cond['{0}-{1}'.format(run, condition)].shape)
-                    else:
-                        pass
-            except Exception as e:
-                print('trying to slice and dice, but', e)
             try:
                 print(f'Making correlation matrix for for sub-{subject}, ses-{session}, task-{task} ({condition}), run-{run}...')
                 corrmats[run] = connectivity_measure.fit_transform([timeseries])[0]
