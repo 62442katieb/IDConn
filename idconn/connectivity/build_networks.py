@@ -156,9 +156,6 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         
         masker = input_data.NiftiLabelsMasker(atlas, standardize=True, t_r=tr, verbose=1)
         timeseries = masker.fit_transform(bold_file, confounds_file)
-        
-        except Exception as e:
-            print('trying to run masker but', e)
         #load timing file 
         #update to use pyBIDS + layout
         try:
