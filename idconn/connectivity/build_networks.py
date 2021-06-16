@@ -154,11 +154,9 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
             
         print(f'BOLD file located at {bold_file}\nTR = {tr}s')
         
-        try:
-            #for each parcellation, extract BOLD timeseries
-            masker = NiftiLabelsMasker(atlas, standardize=True, high_pass=highpass, t_r=2., verbose=1)
-            timeseries = masker.fit_transform(bold_file, confounds_file)
-            connectivity_measure = ConnectivityMeasure(kind=connectivity_metric)
+        masker = input_data.NiftiLabelsMasker(atlas, standardize=True, t_r=tr, verbose=1)
+        timeseries = masker.fit_transform(bold_file, confounds_file)
+        
         except Exception as e:
             print('trying to run masker but', e)
         #load timing file 
