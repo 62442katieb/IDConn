@@ -176,6 +176,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
                     pass
                 print(f'Making correlation matrix for {run}, {condition}.')
                 corrmats[condition][run] = connectivity_measure.fit_transform([run_cond[condition][run]])[0]
+                print('And that correlation matrix is', corrmats[condition][run].shape)
         except Exception as e:
             print('trying to slice and dice, but', e)
     #and paste together the timeseries from each run together per condition
@@ -191,7 +192,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         corrmat_df = pd.DataFrame(index=np.arange(1, avg_corrmat.shape[0]+1), columns=np.arange(1, avg_corrmat.shape[0]+1),data=avg_corrmat)
         avg_corrmats[condition] = corrmat_df
         corrmat_file = join(deriv_dir,  
-                            f'sub-{subject}', f'ses-{session}', 'func', f'sub-{subject}_ses-{session}_task-{task}_run-{run}_desc-{atlas_name}_corrmat.tsv')
+                            f'sub-{subject}', f'ses-{session}', 'func', f'sub-{subject}_ses-{session}_task-{task}_condition-{condition}_run-{run}_desc-{atlas_name}_corrmat.tsv')
         try:
             corrmat_df.to_csv(corrmat_file, sep='\t')
             files.append(corrmat_file)
