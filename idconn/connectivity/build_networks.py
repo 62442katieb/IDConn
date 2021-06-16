@@ -129,8 +129,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         bold_file = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz', run=run)
         assert len(bold_file) == 1, f'BOLD file improperly specified, more than one .nii.gz file with {subject}, {session}, {task}, {run}: {bold_file}'
         tr = layout.get_tr(bold_file)
-        #LATER: PRINT OVERLAY OF MASK ON EXAMPLE FUNC
-        confounds_json = join()
+	
         #load timing file 
         #update to use pyBIDS + layout
         event_file = layout.get(return_type='filename', suffix='events', task=task, subject=subject, run=run, session=session)
