@@ -56,7 +56,7 @@ def confounds_merger(confounds):
     return out_file
     
 
-def task_connectivity(layout, subject, session, task, connectivity_metric, space, atlas, confounds):
+def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation'):
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
@@ -98,6 +98,7 @@ def task_connectivity(layout, subject, session, task, connectivity_metric, space
         deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
     else:
         deriv_dir = out_dir
+    space = 'MNI152NLin2009cAsym'
     atlas_name = basename(atlas).rsplit('.', 2)[0]
     # use pybids here to grab # of runs and preproc bold filenames
     connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
