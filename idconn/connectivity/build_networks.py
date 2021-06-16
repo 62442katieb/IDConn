@@ -56,7 +56,7 @@ def confounds_merger(confounds):
     return out_file
     
 
-def task_networks(layout, subject, session, task, connectivity_metric, space, atlas, confounds):
+def task_connectivity(layout, subject, session, task, connectivity_metric, space, atlas, confounds):
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
@@ -103,7 +103,6 @@ def task_networks(layout, subject, session, task, connectivity_metric, space, at
     connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
     bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
     print(f'BOLD files found at {bold_files}')
-    confounds_files = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task)
 
     runs = []
     if len(bold_files) > 1:
@@ -121,31 +120,43 @@ def task_networks(layout, subject, session, task, connectivity_metric, space, at
     event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
     timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
     conditions = timing['trial_type'].unique()
-	
     
+
     run_cond = {}
+    corrmats = {}
     for run in runs:
-        bold_file = join(fmriprep_dir, subject, session, 'func', '{0}_{1}_{2}_{3}_{4}_desc-preproc_bold.nii.gz'.format(subject, session, task, run, space))
-        assert exists(bold_file), "preprocessed bold file does not exist at {0}".format(bold_file)
-        
+        bold_file = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz', run=run)
+        assert len(bold_file) == 1, f'BOLD file improperly specified, more than one .nii.gz file with {subject}, {session}, {task}, {run}: {bold_file}'
+        tr = layout.get_tr(bold_file)
         #LATER: PRINT OVERLAY OF MASK ON EXAMPLE FUNC
         confounds_json = join()
         #load timing file 
         #update to use pyBIDS + layout
-        if exists(join(dset_dir, '{0}_events.tsv'.format(task))):
-            run_spec_timing = False
-            timing = pd.read_csv(join(dset_dir, '{0}_events.tsv'.format(task)), header=0, index_col=None, sep='\t')
-        elif any(task in s for s in glob(join(preproc_dir, '*events.tsv'))):
-            run_spec_timing = True
-            timing = pd.read_csv(join(preproc_dir, 
-                                      '{0}_{1}_{2}_{3}_events.tsv'.format(subject, session, task, run)), sep='\t')
-        else:
-            print('cannot find task timing file...')
-            timing = None
+        event_file = layout.get(return_type='filename', suffix='events', task=task, subject=subject, run=run, session=session)
+        print('# of event files =', len(event_file), '\nfilename = ', event_file[0])
+        the_file = str(event_file[0])
+        assert exists(the_file), 'file really does not exist'
+        timing = pd.read_csv(the_file, header=0, index_col=0, sep='\t')
+        timing.sort_values('onset')
+
+        confounds_file = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task, run=run, extension='tsv')
+        print(f'Confounds file located at: {confounds_file}')
+        confounds_df = pd.read_csv(confounds_file[0], header=0, sep='\t')
+        confounds_df = confounds_df[confounds].fillna(0)
+        confounds_fname = join(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func', f'sub-{subject}_ses-{session}_task-{task}_run-{run}_desc-confounds_timeseries.tsv')
+        confounds_df.to_csv(confounds_fname, sep='\t')
+
+        masker = input_data.NiftiLabelsMasker(atlas, standardize=True, t_r=tr, verbose=2)
+        ex_bold = image.index_img(bold_file[0], 2)
+        display = plotting.plot_epi(ex_bold)
+        display.add_contours(atlas)
+        display.savefig(join(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func', f'sub-{subject}_ses-{session}_task-{task}_run-{run}_desc-{atlas_name}_overlay.png'))
+            
+        print(f'BOLD file located at {bold_file}\nTR = {tr}s')
         
         try:
             #for each parcellation, extract BOLD timeseries
-            masker = NiftiLabelsMasker(atlas_file, standardize=True, high_pass=highpass, t_r=2., verbose=1)
+            masker = NiftiLabelsMasker(atlas, standardize=True, high_pass=highpass, t_r=2., verbose=1)
             timeseries = masker.fit_transform(bold_file, confounds_file)
             connectivity_measure = ConnectivityMeasure(kind=connectivity_metric)
         except Exception as e:
@@ -155,52 +166,43 @@ def task_networks(layout, subject, session, task, connectivity_metric, space, at
         try:
             #and now we slice into conditions
             for condition in conditions:
+                run_cond[condition] = {}
+                corrmats[condition] = {}
                 blocks = []
                 cond_timing = timing[timing['trial_type'] == condition]
                 for i in cond_timing.index:
                     blocks.append((cond_timing.loc[i]['onset'] / 2, ((cond_timing.loc[i]['onset'] + cond_timing.loc[i]['duration']) / 2) + 1))
                 if len(blocks) > 1:
-                    run_cond['{0}-{1}'.format(run, condition)] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
+                    run_cond[condition][run] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
                 if len(blocks) > 2:
                     for i in np.arange(2,len(blocks)):
-                        run_cond['{0}-{1}'.format(run, condition)] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
+                        run_cond[condition][run] = np.vstack((timeseries[int(blocks[0][0]):int(blocks[0][1]), :], timeseries[int(blocks[1][0]):int(blocks[1][1]), :]))
                     #print('extracted signals for {0}, {1}, {2}'.format(task, run, condition), run_cond['{0}-{1}'.format(run, condition)].shape)
                 else:
                     pass
+                corrmats[condition][run] = connectivity_measure.fit_transform([run_cond[condition][run]])[0]
         except Exception as e:
             print('trying to slice and dice, but', e)
     #and paste together the timeseries from each run together per condition
-    sliced_ts = {}
+    files = []
+    avg_corrmats = {}
     for condition in conditions:
-        #print(task, condition, 'pasting timeseries together per condition')
-        #print('task isn\'t FCI, only 2 runs')
-        #print('{0}-0-{1}'.format(task, condition))
+        data = list(corrmats[condition].values())
+        stacked_corrmats = np.array(data)
+        print('Stacked corrmats have dimensions', stacked_corrmats.shape)
+        avg_corrmat = np.mean(stacked_corrmats, axis=0)
+        corrmat_df = pd.DataFrame(index=np.arange(1, avg_corrmat.shape[0]+1), columns=np.arange(1, avg_corrmat.shape[0]+1),data=avg_corrmat)
+        avg_corrmats[condition] = corrmat_df
+        corrmat_file = join(deriv_dir,  
+                            f'sub-{subject}', f'ses-{session}', 'func', f'sub-{subject}_ses-{session}_task-{task}_run-{run}_desc-{atlas_name}_corrmat.tsv')
         try:
-            if len(runs) > 1:
-                sliced_ts[condition] = np.vstack((run_cond['{0}-{1}'.format(runs[0], condition)], run_cond['{0}-{1}'.format(runs[1], condition)]))
-                if len(runs) > 2:
-                    for run in runs[2:]:
-                        sliced_ts[condition] = np.vstack((sliced_ts[condition], run_cond['{0}-{1}'.format(run, condition)]))
-            else: 
-                sliced_ts[condition] = run_cond['0-{0}'.format(condition)]
-            print('{0} total timeseries shape: {1}'.format(condition, sliced_ts[condition].shape))
-        except Exception as e:
-            print('trying to paste timeseries together, but', e)
-        try:
-            corrmat = connectivity_measure.fit_transform([sliced_ts[condition]])[0]
-            print('{0} corrmat shape: {1}'.format(condition,corrmat.shape))
-            corrmat_df = pd.DataFrame(index=np.arange(1, corrmat.shape[0]+1), columns=np.arange(1, corrmat.shape[0]+1),data=corrmat)
-            corrmat_file = join(deriv_dir,  
-                                '{0}_{1}_{2}-{3}_{4}-corrmat.tsv'.format(subject, session, task, condition, atlas))
-        except Exception as e:
-            print('trying to make and save corrmat, but', e)
-        try:
-                corrmat_df.to_csv(corrmat_file, sep='\t')
+            corrmat_df.to_csv(corrmat_file, sep='\t')
+            files.append(corrmat_file)
         except Exception as e:
             print('saving corrmat...', e)
-        return corrmat_file
+    return files, avg_corrmats
 
-def estimate_connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
+def connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
 
     """
     Makes connectivity matrices per subject per session per task per condition.
@@ -267,12 +269,7 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
         for run in runs:
             print('run = ', run)
             # read in events file for this subject, task, and run
-            event_file = layout.get(return_type='filename', suffix='events', task=task, subject=subject, run=run, session=session)
-            print('# of event files =', len(event_file), '\nfilename = ', event_file[0])
-            the_file = str(event_file[0])
-            assert exists(the_file), 'file really does not exist'
-            timing = pd.read_csv(the_file, header=0, index_col=0, sep='\t')
-            timing.sort_values('onset')
+            
 
             confounds_file = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task, run=run, extension='tsv')
             print(f'Confounds file located at: {confounds_file}')
