@@ -155,7 +155,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         print(f'BOLD file located at {bold_file}\nTR = {tr}s')
         
         masker = input_data.NiftiLabelsMasker(atlas, standardize=True, t_r=tr, verbose=1)
-        timeseries = masker.fit_transform(bold_file, confounds=confounds_fname)
+        timeseries = masker.fit_transform(bold_file[0], confounds=confounds_fname)
         #load timing file 
         #update to use pyBIDS + layout
         try:
