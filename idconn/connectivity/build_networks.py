@@ -6,7 +6,7 @@ import bids
 from os import makedirs
 from os.path import join, exists, basename
 from glob import glob
-from nilearn import input_data, datasets, connectome, image
+from nilearn import input_data, datasets, connectome, image, plotting
 
 #from .utils import contrast
 
