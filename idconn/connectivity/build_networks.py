@@ -56,7 +56,7 @@ def confounds_merger(confounds):
     return out_file
     
 
-def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation'):
+def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation', out_dir=None):
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
