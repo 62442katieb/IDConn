@@ -6,7 +6,7 @@ import bids
 from os import makedirs
 from os.path import join, exists, basename
 from glob import glob
-from nilearn import input_data, datasets, connectome
+from nilearn import input_data, datasets, connectome, image
 
 #from .utils import contrast
 
@@ -344,7 +344,7 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
         assert len(bold_file) == 1, f'BOLD file improperly specified, more than one .nii.gz file with {subject}, {session}, {task}: {bold_file}'
         tr = layout.get_tr(bold_file)
         masker = input_data.NiftiLabelsMasker(atlas, standardize=True, t_r=tr, verbose=2)
-
+	
         ex_bold = image.index_img(bold_file[0], 2)
         display = plotting.plot_epi(ex_bold)
         display.add_contours(atlas)
