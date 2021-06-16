@@ -277,8 +277,10 @@ def estimate_connectivity(layout, subject, session, task, atlas, connectivity_me
             # read in events file for this subject, task, and run
             event_file = layout.get(return_type='filename', suffix='events', task=task, subject=subject, run=run, session=session)
             print('# of event files =', len(event_file), '\nfilename = ', event_file[0])
-            timing = pd.read_csv(str(event_file), header=0, index_col=0, sep='\t')
-            timing.sort_values('onset', axis=1)
+            the_file = str(event_file[0])
+            assert exists(the_file), 'file really does not exist'
+            timing = pd.read_csv(the_file, header=0, index_col=0, sep='\t')
+            timing.sort_values('onset')
 
             confounds_file = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task, run=run, extension='tsv')
             print(f'Confounds file located at: {confounds_file}')
