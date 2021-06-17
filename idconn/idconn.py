@@ -1,39 +1,34 @@
 #!/usr/bin/env python3
 
 """
-Phys2bids is a python3 library meant to set physiological files in BIDS standard.
-It was born for Acqknowledge files (BIOPAC), and at the moment it supports
-``.acq`` files and ``.txt`` files obtained by labchart (ADInstruments).
-It requires python 3.6 or above, as well as the modules:
-- `numpy`
-- `matplotlib`
-In order to process ``.acq`` files, it needs `bioread`, an excellent module
-that can be found at `this link`_
+IDConn is a python3 pipeline meant to streamline analyses of individual 
+differences in functional connectivity
+It was born for use with the Brain Imaging Data Standard, and at the moment it supports
+preprocessed data from fMRIPrep in MNI152 space.
+It requires python 3.6 or above.
+
 The project is under development.
-At the very moment, it assumes:
--  the input file is from one individual scan, not one session with multiple scans.
-.. _this link:
-   https://github.com/uwmadison-chm/bioread
-Copyright 2019, The Phys2BIDS community.
+
+Copyright 2020, Katherine Bottenhorn.
 Please scroll to bottom to read full license.
 """
 import warnings
 warnings.filterwarnings('ignore')
-import numpy as np
+#import numpy as np
 import pandas as pd
 import bids
 import argparse
-import logging
-from os import makedirs
-from os.path import join, exists, basename
-from glob import glob
-from nilearn import input_data, connectome, plotting, image
+#import logging
+#from os import makedirs
+from os.path import exists
+#from glob import glob
+#from nilearn import input_data, connectome, plotting, image
+import idconn.connectivity.build_networks
 
-import idconn
 #from idconn.networking import graph_theory, null_distribution
 
-LGR = logging.getLogger(__name__)
-LGR.setLevel(logging.INFO)
+#LGR = logging.getLogger(__name__)
+#LGR.setLevel(logging.INFO)
 print('Getting started!')
 
 parser = argparse.ArgumentParser(description='Make correlation matrices from BOLD data + mask.')
@@ -96,30 +91,38 @@ for subject in preproc_subjects:
     print(f"Sessions with task-{args.task} found for {subject}: {sessions}")
     for session in sessions:
         print(f"Session {session}")
-        if 'rest' in task:
+        if 'rest' in args.task:
             adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         if len(conditions) < 1:
             adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         else:
             adj_matrix = idconn.connectivity.build_networks.task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
 
-def _main(argv=None):
-    options = _get_parser().parse_args(argv)
-    idconn(**vars(options))
+#def _main(argv=None):
+#    options = parser.parse_args(argv)
+#    idconn(**vars(options))
 
 
-if __name__ == "__main__":
-    _main(sys.argv[1:])
+#if __name__ == "__main__":
+#    _main(sys.argv[1:])
 
 """
-Copyright 2019, The Phys2BIDS community.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright 2020, Katherine Bottenhorn under the MIT License.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 """

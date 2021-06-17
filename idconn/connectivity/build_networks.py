@@ -2,7 +2,7 @@ from posixpath import sep
 import numpy as np
 import pandas as pd
 import nibabel as nib
-import bids
+import idconn.connectivity.build_networks
 from os import makedirs
 from os.path import join, exists, basename
 from glob import glob
@@ -20,40 +20,6 @@ def _check_dims(matrix):
     if matrix.ndim != 2:
         raise ValueError('Expected a square matrix, got array of shape'
                          ' {0}.'.format(matrix.shape))
-
-def confounds_merger(confounds):
-    """
-    DEFUNCT - made obsolete by fmriprep
-    Merges multiple confounds text files.
-    Parameters
-    ----------
-    confounds : list-like
-        Filenames of confounds files.
-    Returns
-    -------
-    confounds_file : str
-        Filename of merged confounds .tsv file
-    """
-    arrays = {}
-    shape0 = np.empty((len(arrays),))
-    shape1 = np.empty((len(arrays),))
-    i = 0
-    for confound in confounds:
-        arrays[confound] = np.genfromtxt(confound, delimiter='\t')
-        _check_dims(arrays[confound])
-        shape0[i] = arrays[confound].shape[0]
-        shape1[i] = arrays[confound].shape[1]
-        i += 1
-    if shape0[0] > shape1[0]:
-        all_conf = np.vstack((arrays[confounds[0]], arrays[confounds[1]]))
-        for confound in confounds[1:]:
-            all_conf = np.vstack((all_conf, arrays[confound]))
-    out_file = join(deriv_dir,
-                    subject,
-                    session,
-                    '{0}_{1}_{2}_{3}_confounds.tsv'.format(subject, session, task, run))
-    np.savetxt(out_file, all_conf, delimiter='\t')
-    return out_file
     
 
 def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation', out_dir=None):
@@ -258,9 +224,9 @@ def connectivity(layout, subject, session, task, atlas, connectivity_metric='cor
             makedirs(out)
     
     
-    event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
-    timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
-    conditions = timing['trial_type'].unique()
+    #event_files = layout.get(return_type='filename', suffix='events', task=task, subject=subject)
+    #timing = pd.read_csv(event_files[0], header=0, index_col=0, sep='\t')
+    #conditions = timing['trial_type'].unique()
 
     if runs:
         corrmats = {}
@@ -294,7 +260,7 @@ def connectivity(layout, subject, session, task, atlas, connectivity_metric='cor
             except Exception as e:
                 print('ERROR: Trying to extract BOLD signals, but', e)
             try:
-                print(f'Making correlation matrix for for sub-{subject}, ses-{session}, task-{task} ({condition}), run-{run}...')
+                print(f'Making correlation matrix for for sub-{subject}, ses-{session}, task-{task}, run-{run}...')
                 corrmats[run] = connectivity_measure.fit_transform([timeseries])[0]
             except Exception as e:
                 print('ERROR: Trying to make corrmat, but', e)
