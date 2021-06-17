@@ -23,7 +23,7 @@ import argparse
 from os.path import exists
 #from glob import glob
 #from nilearn import input_data, connectome, plotting, image
-import idconn.connectivity.build_networks
+from idconn.connectivity import build_networks
 
 #from idconn.networking import graph_theory, null_distribution
 
@@ -92,11 +92,11 @@ for subject in preproc_subjects:
     for session in sessions:
         print(f"Session {session}")
         if 'rest' in args.task:
-            adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         if len(conditions) < 1:
-            adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         else:
-            adj_matrix = idconn.connectivity.build_networks.task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = build_networks.task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
 
 #def _main(argv=None):
 #    options = parser.parse_args(argv)
