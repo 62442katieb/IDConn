@@ -29,8 +29,8 @@ from os.path import join, exists, basename
 from glob import glob
 from nilearn import input_data, connectome, plotting, image
 
-from . import connectivity
-from . import networking
+from idconn.connectivity.build_networks import connectivity, task_connectivity
+#from idconn.networking import graph_theory, null_distribution
 
 LGR = logging.getLogger(__name__)
 LGR.setLevel(logging.INFO)
@@ -47,9 +47,11 @@ parser.add_argument('--out_dir', type=str, help='Overwrites automatic idconn der
 
 parser.add_argument('--space', type=str,
                     help='Space in which to run analyses (must be the space `atlas` is in.')
-parser.add_argument('--connectivity', type=str, 
+parser.add_argument('--conn', type=str, 
                     help='Metric used to calculate connectivity. Must be one of {“covariance”, “correlation”, “partial correlation”, “tangent”, “precision”}.')
+parser.add_argument('--bids_db', type=str, help='Path to saved BIDS dataset layout file.')
 parser.add_argument('--confounds', nargs="+", help='Names of confound regressors from ')
+
 args = parser.parse_args()
 
 if not args.confounds:
@@ -62,14 +64,19 @@ if not args.space:
 else:
     space = args.space
 
-if not args.connectivity:
-    connectivity = 'correlation'
+if not args.conn:
+    conn = 'correlation'
 else:
-    connectivity = args.connectivity
-print(f"Atlas: {args.atlas}\nConnectivity measure: {connectivity}")
+    conn = args.conn
+print(f"Atlas: {args.atlas}\nConnectivity measure: {conn}")
+
+if args.bids_db:
+    bids_db = args.bids_db
+else:
+    bids_db = None
 
 assert exists(args.dset_dir), "Specified dataset doesn't exist:\n{dset_dir} not found.\n\nPlease check the filepath."
-layout = bids.BIDSLayout(args.dset_dir, derivatives=True)
+layout = bids.BIDSLayout(args.dset_dir, derivatives=True, database_path=bids_db)
 subjects = layout.get(return_type='id', target='subject', suffix='bold')
 print(f"Subjects: {subjects}")
 #runs = layout.get(return_type='id', target='session', suffix='bold')
@@ -89,11 +96,11 @@ for subject in preproc_subjects:
     for session in sessions:
         print(f"Session {session}")
         if 'rest' in task:
-            adj_matrix = connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, connectivity, space, confounds)
+            adj_matrix = connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         if len(conditions) < 1:
-            adj_matrix = connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, connectivity, space, confounds)
+            adj_matrix = connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         else:
-            adj_matrix = connectivity.build_networks.task_connectivity(layout, subject, session, args.task, args.atlas, connectivity, space, confounds)
+            adj_matrix = task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
 
 def _main(argv=None):
     options = _get_parser().parse_args(argv)
