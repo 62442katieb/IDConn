@@ -10,6 +10,7 @@ data/*
 .vscode
 .ipynb_checkpoints
 */__pycache__/**
+**.pyc
 
 idconn/preprocessing/**
 **.R
@@ -30,6 +31,7 @@ idconn/networking/task-graph-theory-fci.py
 idconn/networking/task-graph-theory-local-nodal.py
 idconn/networking/task-graph-theory-local.py
 idconn/networking/task-graph-theory-nodal.py
+idconn/io.py
 
 docs/_build/
 docs/generated/
