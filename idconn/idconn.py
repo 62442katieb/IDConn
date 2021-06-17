@@ -29,7 +29,7 @@ from os.path import join, exists, basename
 from glob import glob
 from nilearn import input_data, connectome, plotting, image
 
-from idconn.connectivity.build_networks import connectivity, task_connectivity
+import idconn
 #from idconn.networking import graph_theory, null_distribution
 
 LGR = logging.getLogger(__name__)
@@ -96,11 +96,11 @@ for subject in preproc_subjects:
     for session in sessions:
         print(f"Session {session}")
         if 'rest' in task:
-            adj_matrix = connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         if len(conditions) < 1:
-            adj_matrix = connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = idconn.connectivity.build_networks.connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
         else:
-            adj_matrix = task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
+            adj_matrix = idconn.connectivity.build_networks.task_connectivity(layout, subject, session, args.task, args.atlas, conn, space, confounds)
 
 def _main(argv=None):
     options = _get_parser().parse_args(argv)
