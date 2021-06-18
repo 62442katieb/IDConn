@@ -24,7 +24,7 @@ from os.path import exists
 #from glob import glob
 #from nilearn import input_data, connectome, plotting, image
 from idconn.connectivity import build_networks
-from idconn.parser_utils import is_valid_path
+from idconn.parser_utils import is_valid_file, is_valid_path
 
 #from idconn.networking import graph_theory, null_distribution
 
@@ -74,6 +74,7 @@ def _get_parser():
         nargs="+",
         type=str,
         help='Names of confound regressors from ',
+        default=None,
     )
 
     return parser
