@@ -36,13 +36,11 @@ def _get_parser():
     parser = argparse.ArgumentParser(description='Make correlation matrices from BOLD data + mask.')
     parser.add_argument(
         'dset_dir',
-        metavar="PATH",
         type=lambda x: is_valid_path(parser, x),
         help='Path to BIDS dataset containing fmriprep derivatives folder.',
     )
     parser.add_argument(
         'atlas',
-        metavar="FILE",
         type=lambda x: is_valid_file(parser, x),
         help='Path to atlas file in space specified by `space`.',
     )
