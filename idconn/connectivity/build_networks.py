@@ -1,11 +1,9 @@
 from posixpath import sep
 import numpy as np
 import pandas as pd
-import nibabel as nib
 import idconn.connectivity.build_networks
 from os import makedirs
 from os.path import join, exists, basename
-from glob import glob
 from nilearn import input_data, datasets, connectome, image, plotting
 
 #from .utils import contrast
@@ -68,7 +66,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
     atlas_name = basename(atlas).rsplit('.', 2)[0]
     # use pybids here to grab # of runs and preproc bold filenames
     connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
-    bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
+    bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space=space,subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
     print(f'BOLD files found at {bold_files}')
 
     runs = []
@@ -80,6 +78,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         runs = None
     print(f'Found runs: {runs}')
 
+    print(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func')
     out = join(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func')
     if not exists(out):
             makedirs(out)
