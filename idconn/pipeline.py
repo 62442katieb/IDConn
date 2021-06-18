@@ -88,6 +88,7 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
         print(f"Sessions with task-{task} found for {subject}: {sessions}")
         for session in sessions:
             print(f"Session {session}")
+            print(f"here are the inputs: {layout, subject, session, task, atlas, conn, space, confounds}")
             if 'rest' in task:
                 adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
             if len(conditions) < 1:
