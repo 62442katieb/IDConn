@@ -53,7 +53,7 @@ def _get_parser():
         help='Overwrites automatic idconn derivatives path.'
     )
     parser.add_argument(
-        '--space', 
+        '--space',
         type=str,
         help='Space in which to run analyses (must be the space `atlas` is in).',
         default="MNI152NLin2009cAsym",
