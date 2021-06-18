@@ -43,7 +43,7 @@ def _get_parser():
 
     parser.add_argument('--space', type=str,
                         help='Space in which to run analyses (must be the space `atlas` is in.')
-    parser.add_argument('--conn', type=str,
+    parser.add_argument('--conn', type=str, default='correlation',
                         help='Metric used to calculate connectivity. Must be one of {“covariance”, “correlation”, “partial correlation”, “tangent”, “precision”}.')
     parser.add_argument('--bids_db', type=str, help='Path to saved BIDS dataset layout file.')
     parser.add_argument('--confounds', nargs="+", help='Names of confound regressors from ')
@@ -51,7 +51,7 @@ def _get_parser():
     return parser
 
 
-def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym", conn="correlation", bids_db=None, confounds=None):
+def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym", conn=None, bids_db=None, confounds=None):
     print('Getting started!')
 
     if not confounds:
@@ -99,6 +99,7 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
 def _main(argv=None):
     """Tedana entry point"""
     options = _get_parser().parse_args(argv)
+    print(options)
     idconn_workflow(**vars(options))
 
 
