@@ -34,4 +34,7 @@ setuptools.setup(
         "pybids",
         "networkx",
     ],
+    entry_points={"console_scripts": [
+        "idconn=idconn.pipeline:_main",
+    ]},
 )
