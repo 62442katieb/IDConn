@@ -41,7 +41,7 @@ def _get_parser():
                         help='Task to be analyzed.')
     parser.add_argument('--out_dir', type=str, help='Overwrites automatic idconn derivatives path.')
 
-    parser.add_argument('--space', type=str,
+    parser.add_argument('--space', type=str, default='MNI152NLin2009cAsym',
                         help='Space in which to run analyses (must be the space `atlas` is in.')
     parser.add_argument('--conn', type=str, default='correlation',
                         help='Metric used to calculate connectivity. Must be one of {“covariance”, “correlation”, “partial correlation”, “tangent”, “precision”}.')
