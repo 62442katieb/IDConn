@@ -94,7 +94,7 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
             if len(conditions) < 1:
                 adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
             else:
-                adj_matrix = build_networks.task_connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                adj_matrix = build_networks.task_connectivity(layout=layout, subject=subject, session=session, task=task, atlas=atlas, confounds=confounds, connectivity_metric=conn)
 
 
 def _main(argv=None):

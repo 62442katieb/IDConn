@@ -78,7 +78,6 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
         runs = None
     print(f'Found runs: {runs}')
 
-    print(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func')
     out = join(deriv_dir,  f'sub-{subject}', f'ses-{session}', 'func')
     if not exists(out):
             makedirs(out)
