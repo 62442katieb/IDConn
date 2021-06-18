@@ -80,10 +80,9 @@ if len(subjects) != len(preproc_subjects):
     print(f'{len(subjects)} subjects found in dset, only {len(preproc_subjects)} have preprocessed BOLD data. Pipeline is contniuing anyway, please double check preprocessed data if this doesn\'t seem right.')
 
 example_events = layout.get(return_type='filename', suffix='events', task=args.task, subject=preproc_subjects[0])
-events_df = pd.read_csv(example_events[0], header=0, index_col=0)
+events_df = pd.read_csv(example_events[0], header=0, index_col=0, sep='\t')
 conditions = events_df['trial_type'].unique()
 
-session = '1'
 print(f"Computing connectivity matrices using {args.atlas}")
 for subject in preproc_subjects:
     print(f"Subject {subject}")
