@@ -90,11 +90,20 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
             print(f"Session {session}")
             print(f"here are the inputs: {layout, subject, session, task, atlas, conn, space, confounds}")
             if 'rest' in task:
-                adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                try:
+                    adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                except Exception as e:
+                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
             if len(conditions) < 1:
-                adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                try:
+                    adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                except Exception as e:
+                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
             else:
-                adj_matrix = build_networks.task_connectivity(layout=layout, subject=subject, session=session, task=task, atlas=atlas, confounds=confounds, connectivity_metric=conn)
+                try:
+                    adj_matrix = build_networks.task_connectivity(layout=layout, subject=subject, session=session, task=task, atlas=atlas, confounds=confounds, connectivity_metric=conn)
+                except Exception as e:
+                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
 
 
 def _main(argv=None):
