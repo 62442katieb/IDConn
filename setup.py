@@ -1,14 +1,14 @@
 import setuptools
-import versioneer
 
-setuptools.setup(version=versioneer.get_version(), cmdclass=versioneer.get_cmdclass())
+import versioneer
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="IDConn",  # Replace with your own username
-    version="0.2dev",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author="Katie Bottenhorn",
     author_email="katie.bottenhorn@gmail.com",
     description="A Python pipeline for studying individual differences in brain connectivity.",
@@ -33,8 +33,11 @@ setuptools.setup(
         "bctpy",
         "pybids",
         "networkx",
+        "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
-    entry_points={"console_scripts": [
-        "idconn=idconn.pipeline:_main",
-    ]},
+    entry_points={
+        "console_scripts": [
+            "idconn=idconn.pipeline:_main",
+        ]
+    },
 )
