@@ -107,7 +107,7 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
 
 
 def _main(argv=None):
-    """Tedana entry point"""
+    """IDConn entry point"""
     options = _get_parser().parse_args(argv)
     print(options)
     idconn_workflow(**vars(options))
