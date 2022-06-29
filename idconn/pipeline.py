@@ -39,7 +39,7 @@ def _get_parser():
                         help='Path to atlas file in space specified by `space`.')
     parser.add_argument('task', type=str,
                         help='Task to be analyzed.')
-    parser.add_argument('--out_dir', type=str, help='Overwrites automatic idconn derivatives path.')
+    #parser.add_argument('--out_dir', type=str, help='Overwrites automatic idconn derivatives path.')
 
     parser.add_argument('--space', type=str, default='MNI152NLin2009cAsym',
                         help='Space in which to run analyses (must be the space `atlas` is in.')
