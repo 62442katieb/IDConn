@@ -24,6 +24,7 @@ from os.path import exists
 #from glob import glob
 #from nilearn import input_data, connectome, plotting, image
 from idconn.connectivity import build_networks
+from idconn.parser_utils import is_valid_file, is_valid_path
 
 #from idconn.networking import graph_theory, null_distribution
 
@@ -33,20 +34,50 @@ from idconn.connectivity import build_networks
 
 def _get_parser():
     parser = argparse.ArgumentParser(description='Make correlation matrices from BOLD data + mask.')
-    parser.add_argument('dset_dir', type=str,
-                        help='Path to BIDS dataset containing fmriprep derivatives folder.')
-    parser.add_argument('atlas', type=str,
-                        help='Path to atlas file in space specified by `space`.')
+    parser.add_argument(
+        'dset_dir',
+        type=lambda x: is_valid_path(parser, x),
+        help='Path to BIDS dataset containing fmriprep derivatives folder.',
+    )
+    parser.add_argument(
+        'atlas',
+        type=lambda x: is_valid_file(parser, x),
+        help='Path to atlas file in space specified by `space`.',
+    )
     parser.add_argument('task', type=str,
                         help='Task to be analyzed.')
-    parser.add_argument('--out_dir', type=str, help='Overwrites automatic idconn derivatives path.')
-
-    parser.add_argument('--space', type=str, default='MNI152NLin2009cAsym',
-                        help='Space in which to run analyses (must be the space `atlas` is in.')
-    parser.add_argument('--conn', type=str, default='correlation',
-                        help='Metric used to calculate connectivity. Must be one of {“covariance”, “correlation”, “partial correlation”, “tangent”, “precision”}.')
-    parser.add_argument('--bids_db', type=str, help='Path to saved BIDS dataset layout file.')
-    parser.add_argument('--confounds', nargs="+", help='Names of confound regressors from ')
+    parser.add_argument(
+        '--out_dir',
+        metavar="PATH",
+        type=str,
+        help='Overwrites automatic idconn derivatives path.'
+    )
+    parser.add_argument(
+        '--space',
+        type=str,
+        help='Space in which to run analyses (must be the space `atlas` is in).',
+        default="MNI152NLin2009cAsym",
+    )
+    parser.add_argument(
+        '--conn',
+        action='store',
+        choices=['covariance', 'correlation', 'partial correlation', 'tangent', 'precision'],
+        help='Metric used to calculate connectivity.',
+        default='correlation',
+    )
+    parser.add_argument(
+        '--bids_db',
+        metavar="PATH",
+        type=lambda x: is_valid_path(parser, x),
+        help='Path to saved BIDS dataset layout file.',
+    )
+    parser.add_argument(
+        '--confounds',
+        nargs="+",
+        type=str,
+        help='Names of confound regressors from ',
+        default=None,
+    )
 
     return parser
 
