@@ -62,3 +62,6 @@ var/
 **.pyc
 **.egg*
 **/__pycache__/**
+idconn/connectivity/__pycache__/__init__.cpython-37.pyc
+__pycache__/versioneer.cpython-37.pyc
+idconn/__pycache__/_version.cpython-37.pyc

@@ -47,7 +47,7 @@ def connected_tau(corrmat, proportional=True):
     tau : float
         Highest vaue of tau (threshold) at which network becomes node-connected.
     '''
-    tau = 1
+    tau = 0.01
     connected = False
     while connected == False:
         if proportional:
@@ -56,5 +56,5 @@ def connected_tau(corrmat, proportional=True):
             w = bct.threshold_absolute(corrmat, tau)
         w_nx = nx.convert_matrix.from_numpy_array(w)
         connected = nx.algorithms.components.is_connected(w_nx)
-        tau -= 0.01
+        tau += 0.01
     return tau
