@@ -35,7 +35,7 @@ setuptools.setup(
         "networkx",
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
-    extra_requires={
+    extras_require={
         "tests": [
             "codecov",
             "coverage",
