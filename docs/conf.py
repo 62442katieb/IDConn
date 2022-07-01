@@ -187,7 +187,6 @@ bibtex_footbibliography_header = ""
 def setup(app):
     """From https://github.com/rtfd/sphinx_rtd_theme/issues/117"""
     app.add_css_file("theme_overrides.css")
-    app.add_css_file("nimare.css")
     app.connect("autodoc-process-docstring", generate_example_rst)
     # Fix to https://github.com/sphinx-doc/sphinx/issues/7420
     # from https://github.com/life4/deal/commit/7f33cbc595ed31519cefdfaaf6f415dada5acd94
