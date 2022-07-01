@@ -35,7 +35,7 @@ setuptools.setup(
         "networkx",
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
-    extra_requires={
+    extras_require={
         "doc": [
             "m2r",
             "mistune<2",  # just temporary until m2r addresses this issue
