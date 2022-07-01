@@ -35,6 +35,18 @@ setuptools.setup(
         "networkx",
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
+    extra_requires={
+        "tests": [
+            "codecov",
+            "coverage",
+            "coveralls",
+            "flake8-black",
+            "flake8-docstrings",
+            "flake8-isort",
+            "pytest",
+            "pytest-cov",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "idconn=idconn.pipeline:_main",
