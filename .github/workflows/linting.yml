@@ -52,4 +52,4 @@ jobs:
         run: pip install -e .[tests]
       - name: 'Run linter'
         shell: bash {0}
-        run: make lint
+        run: flake8 idconn
