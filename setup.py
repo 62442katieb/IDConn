@@ -36,6 +36,16 @@ setuptools.setup(
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
     extras_require={
+        "doc": [
+            "m2r",
+            "mistune<2",  # just temporary until m2r addresses this issue
+            "recommonmark",
+            "sphinx>=3.5",
+            "sphinx-argparse",
+            "sphinx-copybutton",
+            "sphinx_gallery==0.10.1",
+            "sphinxcontrib-bibtex",
+            ],
         "tests": [
             "codecov",
             "coverage",
