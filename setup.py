@@ -45,6 +45,16 @@ setuptools.setup(
             "sphinx-copybutton",
             "sphinx_gallery==0.10.1",
             "sphinxcontrib-bibtex",
+
+        "tests": [
+            "codecov",
+            "coverage",
+            "coveralls",
+            "flake8-black",
+            "flake8-docstrings",
+            "flake8-isort",
+            "pytest",
+            "pytest-cov",
         ],
     },
     entry_points={
