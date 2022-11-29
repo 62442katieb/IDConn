@@ -81,3 +81,4 @@ def graph_omst(matrix, measure, args):
     # calculate graph measure on thresholded matrix
     metric = measure(thresh_mat, args)
     return metric
+
