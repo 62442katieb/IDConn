@@ -45,7 +45,7 @@ setuptools.setup(
             "sphinx-copybutton",
             "sphinx_gallery==0.10.1",
             "sphinxcontrib-bibtex",
-
+            ],
         "tests": [
             "codecov",
             "coverage",
