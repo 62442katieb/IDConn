@@ -1,3 +1,4 @@
+docs/auto_examples/
 *.ipynb_checkpoints/*
 bad-qa.png
 cp-corrmats.sh

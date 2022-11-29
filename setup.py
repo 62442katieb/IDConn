@@ -35,6 +35,28 @@ setuptools.setup(
         "networkx",
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
     ],
+    extras_require={
+        "doc": [
+            "m2r",
+            "mistune<2",  # just temporary until m2r addresses this issue
+            "recommonmark",
+            "sphinx>=3.5",
+            "sphinx-argparse",
+            "sphinx-copybutton",
+            "sphinx_gallery==0.10.1",
+            "sphinxcontrib-bibtex",
+            ],
+        "tests": [
+            "codecov",
+            "coverage",
+            "coveralls",
+            "flake8-black",
+            "flake8-docstrings",
+            "flake8-isort",
+            "pytest",
+            "pytest-cov",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "idconn=idconn.pipeline:_main",

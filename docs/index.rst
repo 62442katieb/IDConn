@@ -10,7 +10,8 @@ Welcome to IDConn's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   api
+   auto_examples/index
 
 Indices and tables
 ==================
