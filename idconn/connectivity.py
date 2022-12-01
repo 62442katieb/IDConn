@@ -1,11 +1,11 @@
 from posixpath import sep
 import numpy as np
 import pandas as pd
-import idconn.connectivity.build_networks
+#import idconn.connectivity.build_networks
 from os import makedirs
 from os.path import join, exists, basename
 from nilearn import input_data, datasets, connectome, image, plotting
-
+from . import __version__
 #from .utils import contrast
 
 def _check_dims(matrix):
@@ -18,7 +18,6 @@ def _check_dims(matrix):
     if matrix.ndim != 2:
         raise ValueError('Expected a square matrix, got array of shape'
                          ' {0}.'.format(matrix.shape))
-    
 
 def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation', out_dir=None):
     """
@@ -52,7 +51,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
     """
     #version = '0.1.1'
     try:
-        version = idconn.__version__
+        version = __version__
     except:
         version = 'test'
     if '.nii' in atlas:
@@ -191,7 +190,7 @@ def connectivity(layout, subject, session, task, atlas, connectivity_metric='cor
     adjacency_matrix
     """
     try:
-        version = idconn.__version__
+        version = __version__
     except:
         version = 'test'
     if '.nii' in atlas:
