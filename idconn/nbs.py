@@ -1,7 +1,14 @@
 import numpy as np
 import statsmodels as sm
 import networkx as nx
-from utils import vectorize_corrmats, undo_vectorize
+import pandas as pd
+from io import vectorize_corrmats, undo_vectorize
+from scipy.stats import t
+import enlighten
+import bct
+
+from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
+from sklearn.linear_model import LogisticRegression
 
 
 def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000, stratified=False):
@@ -260,11 +267,7 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         test_y = outcome[test_idx]
 
         pval, adj, _ = pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000)
-        pval, adj, _ = bct.nbs_bct(train_a,
-                                train_b,
-                                t_threshold,
-                                k=k,
-                                tail=tail)
+        
         cv_results.at[i, 'pval'] = pval
         cv_results.at[i, 'component'] = adj
 
@@ -273,6 +276,8 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         train_features = edges[train_idx, :].T[mask]
         test_features = edges[test_idx, :].T[mask]
 
+        # need an IF GROUPS statement
+        # ELSE statsmodels OLS
         regressor = LogisticRegression(max_iter=1000)
         model = regressor.fit(X=train_features.T, y=train_y)
         cv_results.at[i, 'model'] = model
