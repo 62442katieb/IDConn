@@ -31,7 +31,8 @@ with warnings.catch_warnings(record=True) as w:
         # "preprocessing",
         #"statistics",
         # "utils",
-        # "io",
+        "io",
+        "nbs",
         "__version__",
     ]
 
