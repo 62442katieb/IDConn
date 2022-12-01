@@ -4,47 +4,16 @@ from os.path import join, exists
 import bct
 import datetime
 
-def avg_corrmat(layout, task, session):
-    subjects = layout.get_subjects(task=task,session=session)
-    corrmats = {}
-    for subject in subjects:
-        try:
-            if task == "rest":
-                corrmat = np.genfromtxt(
-                    join(
-                        data_dir,
-                        sesh[session],
-                        subject,
-                        "{0}-session-{1}-{2}_network_corrmat_{3}.csv".format(
-                            subject, session, task, atlas
-                        ),
-                    ),
-                    delimiter=",",
-                )
-            else:
-                corrmat = np.genfromtxt(
-                    join(
-                        data_dir,
-                        sesh[session],
-                        subject,
-                        "{0}-session-{1}_{2}-{3}_{4}-corrmat.csv".format(
-                            subject, session, task, condition, atlas
-                        ),
-                    ),
-                    delimiter=" ",
-                )
-            # corrmat = np.genfromtxt(join(data_dir, '{0}-session-{1}_{2}-{3}_{4}-corrmat.csv'.format(subject, session, task, condition, atlas)), delimiter=' ')
-            corrmats[subject] = corrmat
-        except Exception as e:
-            print(subject, e)
-    data = list(corrmats.values())
-    stacked_corrmats = np.array(data)
+# this is all bullshit.
+# update to mesh with the BIDSy way of doing things
+def avg_corrmat(ppt_df):
+    stacked_corrmats = np.array(ppt_df['adj'])
     print('Stacked corrmats have dimensions', stacked_corrmats.shape)
     avg_corrmat = np.mean(stacked_corrmats, axis=0)
     return avg_corrmat
 
 
-def null_model_und_sign(W, bin_swaps=5, wei_freq=0.1, seed=None):
+def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
     def get_rng(seed):
         if seed is None or seed == np.random:
             return np.random.mtrand._rand
@@ -53,7 +22,7 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=0.1, seed=None):
         try:
             rstate = np.random.RandomState(seed)
         except ValueError:
-            rstate = np.random.RandomState(random.Random(seed).randint(0, 2 ** 32 - 1))
+            rstate = np.random.RandomState(np.random.Random(seed).randint(0, 2 ** 32 - 1))
         return rstate
 
     def randmio_und_signed(R, itr, seed=None):
@@ -194,28 +163,28 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=0.1, seed=None):
     W0 = W0 + W0.T
     return W0
 
-def generate_null(layout, task, session, mask):
+def generate_null(ppt_df, thresh_arr, measure):
+    '''
+    Generate a distribution of graph measure values based on a null connectivity matrix
+    that is like the average connectivity matrix across participants.
+    
+    '''
     null_dist = pd.DataFrame(index=subjects, columns=["mean", "sdev"])
     avg_corr = avg_corrmat(
-        layout, task, session, mask
+        ppt_df
     )
     eff_perm = []
-    j = 1
-    while j < 3:
+    j = 0
+    while j < 1000:
         effs = []
-        W = null_model_und_sign(avg_corr.values)
-        for thresh in np.arange(0.21, 0.31, 0.03):
+        W = null_model(avg_corr.values)
+        for thresh in thresh_arr:
             thresh_corr = bct.threshold_proportional(W, thresh)
-            leff = bct.efficiency_wei(thresh_corr)
+            leff = measure(thresh_corr)
             effs.append(leff)
         effs_arr = np.asarray(effs)
         leff_auc = np.trapz(effs_arr, dx=0.03, axis=0)
         eff_perm.append(leff_auc)
         j += 1
-    null_dist.at[(sesh[session], task, conds[i], mask), "mean"] = np.mean(
-        eff_perm
-    )
-    null_dist.at[(sesh[session], task, conds[i], mask), "sdev"] = np.std(
-        eff_perm
-    )
+    
     return null_dist
