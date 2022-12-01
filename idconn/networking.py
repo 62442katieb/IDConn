@@ -1,10 +1,12 @@
 import numpy as np
-#import pandas as pd
+import pandas as pd
 import seaborn as sns
+import networkx as nx
 import matplotlib.pyplot as plt
 from os.path import join
 #from nilearn.connectome import ConnectivityMeasure
 from scipy.sparse.csgraph import minimum_spanning_tree
+from scipy.stats import skew
 import bct
 #import datetime
 
@@ -17,7 +19,6 @@ def avg_corrmat(ppt_df):
     print('Stacked corrmats have dimensions', stacked_corrmats.shape)
     avg_corrmat = np.mean(stacked_corrmats, axis=0)
     return avg_corrmat
-
 
 def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
     def get_rng(seed):
@@ -169,19 +170,19 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
     W0 = W0 + W0.T
     return W0
 
-def generate_null(ppt_df, thresh_arr, measure):
+def generate_null(ppt_df, thresh_arr, measure, permutations=1000):
     '''
     Generate a distribution of graph measure values based on a null connectivity matrix
     that is like the average connectivity matrix across participants.
     
     '''
-    null_dist = pd.DataFrame(index=subjects, columns=["mean", "sdev"])
+    null_dist = pd.DataFrame(index=range(0,permutations), columns=["mean", "sdev"])
     avg_corr = avg_corrmat(
         ppt_df
     )
     eff_perm = []
     j = 0
-    while j < 1000:
+    while j < permutations:
         effs = []
         W = null_model(avg_corr.values)
         for thresh in thresh_arr:
@@ -269,3 +270,58 @@ def graph_omst(matrix, measure, args):
     metric = measure(thresh_mat, args)
     return metric
 
+
+def scale_free_tau(corrmat, skew_thresh, proportional=True):
+    ''''
+    Calculates threshold at which network becomes scale-free, estimated from the skewness of the networks degree distribution.
+    Parameters
+    ----------
+    corrmat : numpy.array
+        Correlation or other connectivity matrix from which tau_connected will be estimated.
+        Should be values between 0 and 1.
+    proportional : bool
+        Determines whether connectivity matrix is thresholded proportionally or absolutely.
+        Default is proportional as maintaining network density across participants is a priority
+    Returns
+    -------
+    tau : float
+        Lowest vaue of tau (threshold) at which network is scale-free.
+    '''
+    tau = 0.01
+    skewness = 1
+    while abs(skewness) > 0.3:
+        if proportional:
+            w = bct.threshold_proportional(corrmat, tau)
+        else:
+            w = bct.threshold_absolute(corrmat, tau)
+        skewness = skew(bct.degrees_und(w))
+        tau += 0.01
+    return tau
+
+def connected_tau(corrmat, proportional=True):
+    '''
+    Calculates threshold at network becomes node connected, using NetworkX's `is_connected` function.
+    Parameters
+    ----------
+    corrmat : numpy.array
+        Correlation or other connectivity matrix from which tau_connected will be estimated.
+        Should be values between 0 and 1.
+    proportional : bool
+        Determines whether connectivity matrix is thresholded proportionally or absolutely.
+        Default is proportional as maintaining network density across participants is a priority
+    Returns
+    -------
+    tau : float
+        Highest vaue of tau (threshold) at which network becomes node-connected.
+    '''
+    tau = 0.01
+    connected = False
+    while connected == False:
+        if proportional:
+            w = bct.threshold_proportional(corrmat, tau)
+        else:
+            w = bct.threshold_absolute(corrmat, tau)
+        w_nx = nx.convert_matrix.from_numpy_array(w)
+        connected = nx.algorithms.components.is_connected(w_nx)
+        tau += 0.01
+    return tau
