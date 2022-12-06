@@ -5,7 +5,7 @@ import pandas as pd
 from os import makedirs
 from os.path import join, exists, basename
 from nilearn import input_data, datasets, connectome, image, plotting
-from . import __version__
+from ._version import get_versions
 #from .utils import contrast
 
 def _check_dims(matrix):
@@ -51,7 +51,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
     """
     #version = '0.1.1'
     try:
-        version = __version__
+        version = get_versions()["version"]
     except:
         version = 'test'
     if '.nii' in atlas:
