@@ -35,7 +35,7 @@ confounds = dat[CONFOUNDS]
 alpha = 0.1
 fig_dir = '/Users/katherine.b/Dropbox/Projects/IDConn'
 
-cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=4, n_iterations=2, k=1000, shuffle=False, fig_dir=fig_dir)
+cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=10000)
 
 cv_results.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_models-{today_str}.tsv'),sep='\t')
 best = cv_results[cv_results['score'] == cv_results['score'].max()].index[0]
