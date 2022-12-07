@@ -9,15 +9,18 @@ from time import strftime
 today = datetime.today()
 today_str = strftime("%m_%d_%Y")
 
-TRAIN_DSET = '/Users/katherine.b/Dropbox/Data/diva-dset'
+TRAIN_DSET = '/Users/katherine.b/Dropbox/Data/ds002674'
 TEST_DSET = '/Users/katherine.b/Dropbox/Data/diva-dset'
 DERIV_NAME = 'IDConn'
-OUTCOME = 'Mean E2 (pg/mL)'
+OUTCOME = 'estradiol'
+CONFOUNDS = ['bc']
+TASK = 'rest'
+ATLAS = 'craddock2012'
 atlas_fname = '/Users/katherine.b/Dropbox/HPC-Backup-083019/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 
 layout = bids.BIDSLayout(TRAIN_DSET, derivatives=True)
 
-dat = io.read_corrmats(layout, task='rest', atlas='craddock2012', z_score=False)
+dat = io.read_corrmats(layout, task=TASK, atlas=ATLAS, z_score=False)
 
 keep = dat['adj'].dropna().index
 dat = dat.loc[keep]
@@ -28,7 +31,7 @@ matrices = np.vstack(dat['adj'].values).reshape((len(keep), num_node, num_node))
 upper_tri = np.triu_indices(num_node, k=1)
 
 outcome = np.reshape(dat[OUTCOME].values, (len(dat[OUTCOME]),1))
-confounds = dat[['bc', 'menst_cycle-day']]
+confounds = dat[CONFOUNDS]
 alpha = 0.1
 fig_dir = '/Users/katherine.b/Dropbox/Projects/IDConn'
 
@@ -56,5 +59,22 @@ prob = odds / (1 + odds)
 model = cv_results.loc[best]['model']
 model.fit(features, outcome)
 fig,fig2 = io.plot_edges(param_mat, atlas_fname, title=None, strength=True, cmap='icefire', node_size='strength')
-fig.savefig('/Users/katherine.b/Dropbox/Projects/IDConn/test1.png')
-fig2.savefig('/Users/katherine.b/Dropbox/Projects/IDConn/test2.png')
+fig.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_betas-{today_str}.png'), dpi=400)
+fig2.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_betas-strength-{today_str}.png'), dpi=400)
+
+layout = bids.BIDSLayout(TEST_DSET, derivatives=True)
+
+test_df = io.read_corrmats(layout, task=TASK, atlas=ATLAS, z_score=False)
+
+test_df.dropna(inplace=True)
+
+outcome_test = test_df[OUTCOME].values
+groups_test = outcome
+matrices_test = np.vstack(test_df['adj'].dropna().values).reshape((len(test_df['adj'].dropna().index),num_node,num_node))
+edges_test = np.vstack(test_df['edge_vector'].dropna().values)
+
+test_features = edges_test.T[mask,:]
+test_outcome = test_df[OUTCOME].values
+accuracy = model.score(test_features.T, test_outcome)
+print('Independent prediction accuracy:\t', accuracy)
+np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'accuracy-{today_str}.txt'), [accuracy])
