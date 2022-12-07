@@ -312,36 +312,41 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         
         #cv_results.at[i, 'pval'] = pval
         cv_results.at[i, 'component'] = adj.values
+        
+        # in the event of no edges significantly related to <outcome>
+        if sum(adj) > 0:
+            # grab the values of the adjacency matrix that are just in the upper triangle
+            # so you don't have repeated edges
+            nbs_vector = adj.values[upper_tri]
+            # use those to make a "significant edges" mask
+            mask = nbs_vector == 1
 
-        # grab the values of the adjacency matrix that are just in the upper triangle
-        # so you don't have repeated edges
-        nbs_vector = adj.values[upper_tri]
-        # use those to make a "significant edges" mask
-        mask = nbs_vector == 1
+            # grab only the significant edges from testing and training sets of edges
+            # for use as features in the predictive models
+            train_features = edges[train_idx, :].T[mask]
+            test_features = edges[test_idx, :].T[mask]
 
-        # grab only the significant edges from testing and training sets of edges
-        # for use as features in the predictive models
-        train_features = edges[train_idx, :].T[mask]
-        test_features = edges[test_idx, :].T[mask]
 
-        # train model predicting outcome from brain (note: no mas covariates)
-        model = regressor.fit(X=train_features.T, y=train_y)
-        cv_results.at[i, 'model'] = model
-        # score that model on the testing data
-        score = model.score(X=test_features.T, y=test_y)
-        cv_results.at[i, 'score'] = score
+            # train model predicting outcome from brain (note: no mas covariates)
+            model = regressor.fit(X=train_features.T, y=train_y)
+            cv_results.at[i, 'model'] = model
+            # score that model on the testing data
+            score = model.score(X=test_features.T, y=test_y)
+            cv_results.at[i, 'score'] = score
 
-        m = 0
-        param_vector = np.zeros_like(nbs_vector)
-        for l in range(0, nbs_vector.shape[0]):
-            if nbs_vector[l] == 1.:
-                param_vector[l] = model.coef_[0,m]
-                m+=1
-            else:
-                pass
-        X = undo_vectorize(param_vector, num_node=num_node)
-        cv_results.at[i, 'coefficient_matrix'] = X
-        cv_results.at[i, 'coefficient_vector'] = param_vector
-        i += 1
+            m = 0
+            param_vector = np.zeros_like(nbs_vector)
+            for l in range(0, nbs_vector.shape[0]):
+                if nbs_vector[l] == 1.:
+                    param_vector[l] = model.coef_[0,m]
+                    m+=1
+                else:
+                    pass
+            X = undo_vectorize(param_vector, num_node=num_node)
+            cv_results.at[i, 'coefficient_matrix'] = X
+            cv_results.at[i, 'coefficient_vector'] = param_vector
+            i += 1
+        else:
+            pass
         ticks.update()
     return cv_results
