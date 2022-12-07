@@ -303,7 +303,7 @@ def undo_vectorize(edges, num_node):
     X = X + X.T
     return X
 
-def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='icefire', node_size='strength'):
+def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='vlag', node_size='strength'):
     coords = plotting.find_parcellation_cut_coords(atlas_nii)
     num_node = adj.shape[0]
     # only plot the top t% of edges
