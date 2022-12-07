@@ -78,8 +78,10 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     # vectorize_corrmats returns p x n^2
     # we want to run pynbs per edge
     # so vectorized edges must be transposed
-    
-    exog = np.hstack((outcome, confounds))
+    if confounds:
+        exog = np.hstack((outcome, confounds))
+    else:
+        exog = outcome
     exog = sm.add_constant(exog, prepend=False)
     # turn matrices into vectorized upper triangles
     if ndims > 2:
@@ -206,7 +208,7 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     else:
         return S1
 
-def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=10, k=1000, shuffle=False, fig_dir=None):
+def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=10):
     """Calculates the Network Based Statistic (Zalesky et al., 20##) on connectivity matrices provided
     of shape ((subject x session)x node x node)
     in the network.
@@ -288,6 +290,8 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         if groups is not None:
             train_a_idx = [m for m in train_idx if groups[m] == 0]
             train_b_idx = [m for m in train_idx if groups[m] == 1]
+            regressor = LogisticRegression(max_iter=1000)
+        elif np.unique(outcome).shape[0] >2:
             regressor = LogisticRegression(max_iter=1000)
         else:
             regressor = LinearRegression()
