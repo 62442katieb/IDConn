@@ -1,15 +1,27 @@
 import numpy as np
-import statsmodels as sm
+import statsmodels.api as sm
 import networkx as nx
 import pandas as pd
-from io import vectorize_corrmats, undo_vectorize
+from idconn.io import vectorize_corrmats, undo_vectorize
 from scipy.stats import t
 import enlighten
-import bct
+#import bct
 
 from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression
 
+def calc_number_of_nodes(matrices):
+    if matrices.shape[0] != matrices.shape[1]:
+        if matrices.shape[1] == matrices.shape[2]:
+            num_node = matrices.shape[1]
+            matrices = np.moveaxis(matrices, 0, -1)
+        else:
+            raise ValueError(f'Matrices of shape {matrices.shape}',
+                             'requires matrices of shape (subject x session) x node x node',
+                             'or node x node x (subject x session).')
+    else:
+        num_node = matrices.shape[0]
+    return num_node
 
 def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000, stratified=False):
     '''
@@ -59,6 +71,9 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     # and, if not predict, build a null distribution
     n = matrices.shape[:-1]
     ndims = len(matrices.shape)
+    #print(ndims)
+    #if ndims >=2
+    num_node = calc_number_of_nodes(matrices)
     
     # vectorize_corrmats returns p x n^2
     # we want to run pynbs per edge
@@ -70,8 +85,10 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     if ndims > 2:
         edges = vectorize_corrmats(matrices)
     else:
-        edges = matrices.copy()
+        raise ValueError(f'Input matrices have shape {matrices.shape},',
+                             'pyNBS requires matrices of shape (subject x session) x node x node.')
     edges = edges.T
+    #print(f'\n\n\n{edges.shape}\n\n\n')
     
     # run an ols per edge
     # create significancs matrix for predictor of interest (outcome)
@@ -92,7 +109,7 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     
     # find largest connected component of sig_edges
     # turn sig_edges into an nxn matrix first
-    sig_matrix = undo_vectorize(sig_edges) # need to write this function
+    sig_matrix = undo_vectorize(sig_edges, num_node) # need to write this function
     matrix = nx.from_numpy_array(sig_matrix)
     
     #use networkX to find connected components
@@ -104,7 +121,10 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     size = np.asarray([s.number_of_edges() for s in S])
     (max_comp, ) = np.where(size == max(size))
     largest_comp_size = max(size)
-    print(f'Connected component has {largest_comp_size} edges.')
+    if predict == False:
+        print(f'Connected component has {largest_comp_size} edges.')
+    else:
+        pass
 
     # retain size of largest connected component 
     # for NBS permutation-based significance testing
@@ -127,8 +147,10 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
     # plotting in brain space
     for i in unused_nodes:
         S1.loc[i] = 0
-        S1[i] = 0
-
+        temp = S1.copy()
+        temp[i] = 0
+        S1 = temp.copy()
+    
     S1.sort_index(axis=0, inplace=True)
     S1.sort_index(axis=1, inplace=True)
     
@@ -157,7 +179,7 @@ def pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000
             #print(np.sum(perm_edges))
             # find largest connected component of sig_edges
             # turn sig_edges into an nxn matrix first
-            perm_matrix = undo_vectorize(perm_edges) # need to write this function
+            perm_matrix = undo_vectorize(perm_edges, num_node) # need to write this function
             perm_nx = nx.from_numpy_array(perm_matrix)
 
             comps = nx.connected_components(perm_nx)
@@ -202,6 +224,8 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         an array of symmetric matrices.
     outcome : list-like of shape (p,)
         Y-value to be predicted with connectivity
+    groups : list-like of shape (p,)
+        Grouping variable - currently only works for 2 groups
     
     Returns
     -------
@@ -215,7 +239,7 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
 
     cv_results = pd.DataFrame(index=index, 
                             columns=['split',  
-                                    'pval', 
+                                    #'pval', 
                                     'score',
                                     'component',
                                     'coefficient_matrix',
@@ -224,28 +248,32 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
     if groups is not None:
         cv = RepeatedStratifiedKFold(n_splits=n_splits,
                                     n_repeats=n_iterations)
-        df = groups.shape[0] - 2
+        dof = groups.shape[0] - 2
     else:
         cv = RepeatedKFold(n_splits=n_splits, 
                         n_repeats=n_iterations)
-        df = edges.shape[0] - 1
+        dof = edges.shape[0] - 1
     
     if tail == 'both':
         alpha = 0.01
     else:
         alpha = 0.005
-    t_threshold = t.ppf(1 - alpha, df=df)
+    t_threshold = t.ppf(1 - alpha, df=dof)
     
-    if matrices.shape[0] != matrices.shape[1]:
-        if matrices.shape[1] == matrices.shape[2]:
-            num_node = matrices.shape[1]
-            matrices = np.moveaxis(matrices, 0, -1)
-        else:
-            raise ValueError(f'Matrices of shape {matrices.shape}',
-                             'requires matrices of shape (subject x session) x node x node',
-                             'or node x node x (subject x session).')
-    else:
-        num_node = matrices.shape[0]
+    # really can't remember why tf I did this?
+    # maybe it's an artifact of permuted_ols?
+    num_node = calc_number_of_nodes(matrices)
+    #print(num_node)
+    #if matrices.shape[0] != matrices.shape[1]:
+    #    if matrices.shape[1] == matrices.shape[2]:
+    #        num_node = matrices.shape[1]
+            #matrices = np.moveaxis(matrices, 0, -1)
+    #    else:
+    #        raise ValueError(f'Matrices of shape {matrices.shape}',
+                             #'requires matrices of shape (subject x session) x node x node',
+                             #'or node x node x (subject x session).')
+    #else:
+    #    num_node = matrices.shape[0]
     upper_tri = np.triu_indices(num_node, k=1)
     
     i = 0
@@ -255,32 +283,47 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         cv_results.at[i, 'split'] = (train_idx, test_idx)
         # all of this presumes the old bctpy version of nbs
         # irrelevant for pynbs
-        #train_a_idx = [m for m in train_idx if outcome[m] == 0]
-        #train_b_idx = [m for m in train_idx if outcome[m] == 1]
+        
         #assert len(train_a_idx) == len(train_b_idx)
-        #train_a = matrices[:,:,train_a_idx]
-        #train_b = matrices[:,:,train_b_idx]
+        if groups is not None:
+            train_a_idx = [m for m in train_idx if groups[m] == 0]
+            train_b_idx = [m for m in train_idx if groups[m] == 1]
+            regressor = LogisticRegression(max_iter=1000)
+        else:
+            regressor = LinearRegression()
+        train_mats = matrices[train_idx,:,:]
         #print(train_a.shape, train_b.shape)
         
         # separate edges & covariates into 
         train_y = outcome[train_idx]
         test_y = outcome[test_idx]
 
-        pval, adj, _ = pynbs(matrices, outcome, confounds, alpha, predict=False, permutations=10000)
+        train_confounds = confounds.values[train_idx]
+        #test_confounds = confounds.values[test_idx]
         
-        cv_results.at[i, 'pval'] = pval
-        cv_results.at[i, 'component'] = adj
+        # perform NBS wooooooooo
+        # note: output is a dataframe :)
+        adj = pynbs(train_mats, train_y, train_confounds, alpha, predict=True)
+        #print(adj.shape, adj.ndim, adj[0].shape, upper_tri)
+        
+        #cv_results.at[i, 'pval'] = pval
+        cv_results.at[i, 'component'] = adj.values
 
-        nbs_vector = adj[upper_tri]
+        # grab the values of the adjacency matrix that are just in the upper triangle
+        # so you don't have repeated edges
+        nbs_vector = adj.values[upper_tri]
+        # use those to make a "significant edges" mask
         mask = nbs_vector == 1
+
+        # grab only the significant edges from testing and training sets of edges
+        # for use as features in the predictive models
         train_features = edges[train_idx, :].T[mask]
         test_features = edges[test_idx, :].T[mask]
 
-        # need an IF GROUPS statement
-        # ELSE statsmodels OLS
-        regressor = LogisticRegression(max_iter=1000)
+        # train model predicting outcome from brain (note: no mas covariates)
         model = regressor.fit(X=train_features.T, y=train_y)
         cv_results.at[i, 'model'] = model
+        # score that model on the testing data
         score = model.score(X=test_features.T, y=test_y)
         cv_results.at[i, 'score'] = score
 
@@ -292,9 +335,7 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
                 m+=1
             else:
                 pass
-        X = np.zeros_like(adj)
-        X[np.triu_indices(X.shape[0], k=1)] = param_vector
-        X = X + X.T
+        X = undo_vectorize(param_vector, num_node=num_node)
         cv_results.at[i, 'coefficient_matrix'] = X
         cv_results.at[i, 'coefficient_vector'] = param_vector
         i += 1

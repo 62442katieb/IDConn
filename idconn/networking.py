@@ -270,7 +270,6 @@ def graph_omst(matrix, measure, args):
     metric = measure(thresh_mat, args)
     return metric
 
-
 def scale_free_tau(corrmat, skew_thresh, proportional=True):
     ''''
     Calculates threshold at which network becomes scale-free, estimated from the skewness of the networks degree distribution.

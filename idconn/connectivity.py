@@ -163,7 +163,7 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
             print('saving corrmat...', e)
     return files, avg_corrmats
 
-def connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
+def rest_connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
 
     """
     Makes connectivity matrices per subject per session per task per condition.
@@ -190,7 +190,7 @@ def connectivity(layout, subject, session, task, atlas, connectivity_metric='cor
     adjacency_matrix
     """
     try:
-        version = __version__
+        version = get_versions()["version"]
     except:
         version = 'test'
     if '.nii' in atlas:

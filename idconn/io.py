@@ -161,7 +161,7 @@ def vectorize_corrmats(matrices):
     ----------
     matrices : numpy array of shape (p, n, n)
         Represents the link strengths of the graphs. Assumed to be
-        an array of symmetric matrices.
+        an array of symmetric nxn matrices per participant and/or timepoint (p).
     
     Returns
     -------
@@ -169,7 +169,7 @@ def vectorize_corrmats(matrices):
         Represents an array of vectorized upper triangles of 
         the input matrices.
     """
-    #print(matrices.shape, matrices.ndim)
+    #print(f'\n\n\n{matrices.shape}, {matrices.ndim}\n\n\n')
     num_node = matrices.shape[1]
     upper_tri = np.triu_indices(num_node, k=1)
     if matrices.ndim == 3:
@@ -202,7 +202,7 @@ def vectorize_corrmats(matrices):
     edge_vector = np.asarray(edge_vector)
     return edge_vector
 
-def read_corrmats(layout, task, deriv_name, conf_measures=None, z_score=True, vectorized=True, verbose=False):
+def read_corrmats(layout, task, deriv_name='IDConn', atlas=None, conf_measures=None, z_score=True, vectorized=True, verbose=False):
     """Returns a node x node x (subject x session) matrix of correlation matrices  
     from a BIDS derivative folder. Optionally returns a subject x session dataframe
     of confound measures (e.g., motion averages) and/or a node^2 x (subject x session) 
@@ -258,14 +258,15 @@ def read_corrmats(layout, task, deriv_name, conf_measures=None, z_score=True, ve
                                subject=subject,
                                session=session,
                                suffix='bold',
-                               scope='IDConn'
+                               scope='IDConn', 
+                               atlas=atlas,
                               )
             if verbose:
                 print(f'Corrmat path for sub-{subject}, ses-{session}: \t{path}')
             else:
                 pass
             if type(path) == list:
-                #print(len(path))
+                #print(path)
                 path = path[0]
             else:
                 pass
@@ -294,9 +295,9 @@ def read_corrmats(layout, task, deriv_name, conf_measures=None, z_score=True, ve
     ppt_df.replace({'': np.nan}, inplace=True)
     return ppt_df
 
-def undo_vectorize(edges):
-    j = len(edges)
-    num_node = (np.sqrt((8 * j) + 1) + 1) / 2
+def undo_vectorize(edges, num_node):
+    #j = len(edges)
+    #num_node = (np.sqrt((8 * j) + 1) + 1) / 2
     X = np.zeros((num_node,num_node))
     X[np.triu_indices(X.shape[0], k = 1)] = edges
     X = X + X.T
@@ -335,7 +336,7 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
                                 axes=ax0,
                                 colorbar=False, 
                                 annotate=False)
-    h = sns.heatmap(adj, square=True, cmap=cmap, ax=ax1)
+    h = sns.heatmap(adj, square=True, cmap=cmap, ax=ax1, center=0)
     if strength:
         fig2 = plt.figure(figsize=(12,4))
         if title is not None:

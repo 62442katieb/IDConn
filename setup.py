@@ -33,7 +33,8 @@ setuptools.setup(
         "bctpy",
         "pybids",
         "networkx",
-        "matplotlib",  # necessary until nilearn includes mpl as a dependency
+        "matplotlib", # necessary until nilearn includes mpl as a dependency
+        "enlighten",  
     ],
     extras_require={
         "doc": [
