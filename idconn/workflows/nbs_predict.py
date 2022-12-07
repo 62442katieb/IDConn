@@ -37,14 +37,14 @@ fig_dir = '/Users/katherine.b/Dropbox/Projects/IDConn'
 
 cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=1000)
 
-cv_results.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_models-{today_str}.tsv'),sep='\t')
+cv_results.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_models-{today_str}.tsv'),sep='\t')
 best = cv_results[cv_results['score'] == cv_results['score'].max()].index[0]
 subnetwork = cv_results.loc[best]['component']
 subnetwork_df = pd.DataFrame(subnetwork,
                              index=range(0,num_node), 
                              columns=range(0,num_node))
 
-subnetwork_df.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_edge_parameters-{today_str}.tsv'),sep='\t')
+subnetwork_df.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_edge-parameters-{today_str}.tsv'),sep='\t')
 
 nbs_vector = subnetwork[upper_tri]
 mask = nbs_vector == 1
@@ -59,8 +59,8 @@ prob = odds / (1 + odds)
 model = cv_results.loc[best]['model']
 model.fit(features, outcome)
 fig,fig2 = io.plot_edges(param_mat, atlas_fname, title=None, strength=True, cmap='icefire', node_size='strength')
-fig.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_betas-{today_str}.png'), dpi=400)
-fig2.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_betas-strength-{today_str}.png'), dpi=400)
+fig.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_betas-{today_str}.png'), dpi=400)
+fig2.savefig(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_betas-strength-{today_str}.png'), dpi=400)
 
 layout = bids.BIDSLayout(TEST_DSET, derivatives=True)
 
@@ -77,4 +77,4 @@ test_features = edges_test.T[mask,:]
 test_outcome = test_df[OUTCOME].values
 accuracy = model.score(test_features.T, test_outcome)
 print('Independent prediction accuracy:\t', accuracy)
-np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'accuracy-{today_str}.txt'), [accuracy])
+np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_accuracy-{today_str}.txt'), [accuracy])
