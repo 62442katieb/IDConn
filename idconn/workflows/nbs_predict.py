@@ -5,6 +5,7 @@ import bids
 from os.path import join
 from datetime import datetime
 from time import strftime
+from scipy.stats import spearmanr
 
 today = datetime.today()
 today_str = strftime("%m_%d_%Y")
@@ -31,7 +32,10 @@ matrices = np.vstack(dat['adj'].values).reshape((len(keep), num_node, num_node))
 upper_tri = np.triu_indices(num_node, k=1)
 
 outcome = np.reshape(dat[OUTCOME].values, (len(dat[OUTCOME]),1))
-confounds = dat[CONFOUNDS]
+if CONFOUNDS is not None:
+    confounds = dat[CONFOUNDS]
+else:
+    confounds = None
 alpha = 0.1
 fig_dir = '/Users/katherine.b/Dropbox/Projects/IDConn'
 
@@ -55,7 +59,7 @@ param_mat = cv_results.loc[best]['coefficient_matrix']
 odds = 10 ** param_mat 
 prob = odds / (1 + odds)
 
-# run the model on the whole 28andMe dataset to get params
+# run the model on the whole test dataset to get params
 model = cv_results.loc[best]['model']
 model.fit(features, outcome)
 fig,fig2 = io.plot_edges(param_mat, atlas_fname, title=None, strength=True, cmap='icefire', node_size='strength')
@@ -75,6 +79,17 @@ edges_test = np.vstack(test_df['edge_vector'].dropna().values)
 
 test_features = edges_test.T[mask,:]
 test_outcome = test_df[OUTCOME].values
-accuracy = model.score(test_features.T, test_outcome)
-print('Independent prediction accuracy:\t', accuracy)
-np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_accuracy-{today_str}.txt'), [accuracy])
+# if the model is a logistic regression, i.e. with a binary outcome
+# then score is prediction accuracy
+# if the model is a linear regression, i.e., with a continuous outcome
+# then the score is R^2 (coefficient of determination)
+score = model.score(test_features.T, test_outcome)
+print('Independent prediction accuracy:\t', score)
+pred_outcome = model.predict(test_features.T)
+if len(np.unique(test_outcome)) > 2:
+    corr = spearmanr(test_outcome, pred_outcome)
+    print('\nSpearman correlation:\t', corr)
+    np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_score-{today_str}.txt'), [score, corr[0], corr[1]])
+else: 
+    np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_score-{today_str}.txt'), [score])
+
