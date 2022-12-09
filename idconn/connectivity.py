@@ -19,35 +19,37 @@ def _check_dims(matrix):
         raise ValueError('Expected a square matrix, got array of shape'
                          ' {0}.'.format(matrix.shape))
 
-def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation', out_dir=None):
+def task_connectivity(layout, subject, session, task, atlas, confounds, connectivity_metric='correlation'):
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
     ----------
-    dset_dir : str
-        BIDS-formatted dataset path (top-level, in which a 'derivatives/' directory will be made if one does not exist)
+    layout : BIDSLayout object
+        BIDSLayout (i.e., pybids layout object) for directory containing data for analysis (with `derivative=True`, as we're using fmriprep output).
     subject : str
         Subject ID for which the networks will be calculated.
     session : str, optional
-        Session of data collection. If there's only one session, we'll find it.
+        Session of data collection for which networks will be calculated. If there's only one session, we'll find it.
     task : str
-        Name of task fMRI scan from which networks will be calculated.
+        Name of task fMRI scan (can be "rest") from which networks will be calculated.
     connectivity_metric : {"correlation", "partial correlation", "tangent",\
                            "covariance", "precision"}, optional
-        The matrix kind. Passed to Nilearn's `ConnectivityMeasure`.
+        The matrix kind. Passed to Nilearn's `ConnectivityMeasure`. Default is product-moment correlation, "correlation".
     space : str
-        'native' if analyses will be performed in subjects' functional native space (atlas(es) should be transformed)
-        'mni152-2mm' if analyses will be performed in MNI125 2mm isotropic space (fMRI data should already be transformed)
+        'native' if analyses will be performed in subjects' functional native space (atlas(es) should be transformed into this space already).
+        'mni152-2mm' if analyses will be performed in MNI125 2mm isotropic space (fMRI data should already be transformed into MNI space).
     atlas : str
         If you want to grab an atlas using Nilearn, this is the name of the atlas and 
         must match the corresponding function `fetch_atlas_[name]` in `nilearn.datasets`. 
-        If you have your own atlas, this is the path to that nifti file.`
+        If you have your own atlas, this is the path to that nifti file. Currently: only works with paths. 
     confounds : list-like
-        Filenames of confounds files.
+        Columns from fMRIPrep confounds output to be regressed out of fMRI data before correlation matrices are made.
     Returns
     -------
-    confounds_file : str
-        Filename of merged confounds .tsv file
+    avg_corrmats: numpy array
+        Average corrmat (per condition, if applicable).
+    files : list
+        Filenames of computed correlation matrices.
     """
     #version = '0.1.1'
     try:
@@ -57,10 +59,8 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
     if '.nii' in atlas:
         assert exists(atlas), f'Mask file does not exist at {atlas}'
     
-    if not out_dir:
-        deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
-    else:
-        deriv_dir = out_dir
+    deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
+    
     space = 'MNI152NLin2009cAsym'
     atlas_name = basename(atlas).rsplit('.', 2)[0]
     # use pybids here to grab # of runs and preproc bold filenames
@@ -163,14 +163,14 @@ def task_connectivity(layout, subject, session, task, atlas, confounds, connecti
             print('saving corrmat...', e)
     return files, avg_corrmats
 
-def rest_connectivity(layout, subject, session, task, atlas, connectivity_metric='correlation', confounds=None, out_dir=None):
+def rest_connectivity(layout, subject, session, task, atlas, confounds=None,connectivity_metric='correlation'):
 
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
     ----------
     layout : str
-        BIDS layout with derivatives indexed from pyBIDS
+        BIDS layout with fMRIPrep derivatives indexed from pyBIDS
     subject : str
         Subject ID for which the networks will be calculated.
     session : str, optional
@@ -178,16 +178,17 @@ def rest_connectivity(layout, subject, session, task, atlas, connectivity_metric
     connectivity_metric : {"correlation", "partial correlation", "tangent",\
                            "covariance", "precision"}, optional
         The matrix kind. Passed to Nilearn's `ConnectivityMeasure`.
-    space : str
-        'native' if analyses will be performed in subjects' functional native space (atlas(es) should be transformed)
-        'mni152-2mm' if analyses will be performed in MNI125 2mm isotropic space (fMRI data should already be transformed)
     atlas : str
-        Name of atlas for parcellating voxels into nodes, must be in the same `space` given above.
+        Name of atlas for parcellating voxels into nodes, must be in the same `space` as preprocessed rsfMRI data from fMRIPrep.
     confounds : list-like
         Names of confounds (should be columns in fmriprep output confounds.tsv).
     Returns
     -------
-    adjacency_matrix
+    corrmat_df : Pandas dataframe 
+        Functional connectivity matrix with labeled nodes (i.e., rows, columns) and weighted edges (i.e., elements) based on
+        the connectivity metric selected. If multiple runs, represents average across runs.
+    corrmat_file : str
+        Path to saved correlation matrix.
     """
     try:
         version = get_versions()["version"]
@@ -196,16 +197,13 @@ def rest_connectivity(layout, subject, session, task, atlas, connectivity_metric
     if '.nii' in atlas:
         assert exists(atlas), f'Mask file does not exist at {atlas}'
     
-    if not out_dir:
-        deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
-    else:
-        deriv_dir = out_dir
+    deriv_dir = join(layout.root, 'derivatives', f'idconn-{version}')
     atlas_name = basename(atlas).rsplit('.', 2)[0]
     # use pybids here to grab # of runs and preproc bold filenames
     connectivity_measure = connectome.ConnectivityMeasure(kind=connectivity_metric)
     bold_files = layout.get(scope='derivatives', return_type='file', suffix='bold', task=task, space='MNI152NLin2009cAsym',subject=subject, session=session, extension='nii.gz') # should be preprocessed BOLD file from fmriprep, grabbed with pybids
     print(f'BOLD files found at {bold_files}')
-    confounds_files = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task)
+    #confounds_files = layout.get(scope='derivatives', return_type='file', desc='confounds',subject=subject,session=session, task=task)
 
     runs = []
     if len(bold_files) > 1:
