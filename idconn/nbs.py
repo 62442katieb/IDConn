@@ -3,7 +3,7 @@ import statsmodels.api as sm
 import networkx as nx
 import pandas as pd
 from idconn.io import vectorize_corrmats, undo_vectorize
-from scipy.stats import t
+from scipy.stats import t, pearsonr, pointbiserialr, spearmanr
 import enlighten
 #import bct
 
@@ -23,7 +23,7 @@ def calc_number_of_nodes(matrices):
         num_node = matrices.shape[0]
     return num_node
 
-def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutations=10000, stratified=False):
+def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutations=10000):
     '''
     Calculates the Network Based Statistic (Zalesky et al., 2011) on connectivity matrices provided
     of shape ((subject x session)x node x node)
@@ -52,10 +52,7 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     permutations : int
         If `predict=False`, specifies the number of permutations run to create a null distribution
         for estimating the significance of the connected component size. Recommended 10,000.
-    stratified : bool or list-like of shape (p,)
-        If `predict=True` and there are groups that should be equally sampled across k-fold 
-        cross-validation, input should be a list of group belonging (i.e., one label per participant).
-
+    
     Returns
     -------
     S1 : Pandas dataframe
@@ -69,7 +66,7 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # and retain significant edges
     # then find the largest connected component
     # and, if not predict, build a null distribution
-    n = matrices.shape[:-1]
+    n = matrices.shape[0]
     ndims = len(matrices.shape)
     #print(ndims)
     #if ndims >=2
@@ -98,10 +95,17 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # 0 if it's not
     sig_edges = []
     for i in range(0, edges.shape[0]):
+        y = edges[i,:]
         # statsmodels for regressing predictors on edges
-        mod = sm.OLS(edges[i,:], exog, hasconst=True)
-        results = mod.fit()
-        edge_pval = results.pvalues[0]
+        #mod = sm.OLS(y, exog, hasconst=True)
+        #results = mod.fit()
+        #edge_pval = results.pvalues[0]
+        
+        # let's try straight up correlations?
+        if len(np.unique(outcome)) > 2:
+            r, edge_pval = pearsonr(outcome.reshape(n,), y.reshape(n,))
+        else:
+            r, edge_pval = pointbiserialr(outcome.reshape(n,), y.reshape(n,))
         
         # build binary significance edge vector
         if edge_pval < alpha:
@@ -148,9 +152,9 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # and NBS might need all nodes for easier
     # plotting in brain space
     for i in unused_nodes:
-        S1.loc[i] = 0
+        S1.loc[i] = 0.0
         temp = S1.copy()
-        temp[i] = 0
+        temp[i] = 0.0
         S1 = temp.copy()
     
     S1.sort_index(axis=0, inplace=True)
@@ -160,7 +164,6 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # only for regular NBS, -Predict doesn't need this
     if predict == False:
         perms = np.zeros((permutations,))
-        hit = 0
         rng = np.random.default_rng()
         exog_copy = exog.copy()
         for i in range(0, permutations):
@@ -208,7 +211,7 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     else:
         return S1
 
-def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=10):
+def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10, n_iterations=10):
     """Calculates the Network Based Statistic (Zalesky et al., 20##) on connectivity matrices provided
     of shape ((subject x session)x node x node)
     in the network.
@@ -226,14 +229,28 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         an array of symmetric matrices.
     outcome : list-like of shape (p,)
         Y-value to be predicted with connectivity
+    confounds : list-like
+        Names of columns in `participants.tsv` to be regressed out of connectivity and outcome 
+        data in each CV fold (per recommendation from Snoek et al., 2019).
+    alpha : float
+        Proportion of type II errors (i.e., false positives) we're willing to put up with. 
+        This is the upper limit for pvalues in the edge detection process.
     groups : list-like of shape (p,)
-        Grouping variable - currently only works for 2 groups
+        Grouping variable - currently only works for 2 groups. Will enforce stratified k-fold CV.
+    n_splits : int
+        Value of K for K-fold cross-validation. Will split data into K chunks, train on K-1 chunks and test on the Kth.
+    n_iterations : int
+        Number of times to run K-fold cross-validation. More times = more stable results.
     
     Returns
     -------
+    weighted_average : Pandas dataframe
+        Includes the average of all largest components across folds and iterations, weighted by
+        their prediction performance (i.e., accuracy for binary outcome, correlation for continuous).
+        Could be used for out-of-sample prediction, once thresholded and binarized.
     cv_results : Pandas dataframe
-        Includes the results of each cross-validation loop
-        the input matrices.
+        Includes the results of each cross-validation loop 
+        (e.g., predictive performance, data split, largest connected component per fold per iteration).
     """
     edges = vectorize_corrmats(matrices)
     #print(edges.shape)
@@ -256,11 +273,7 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
                         n_repeats=n_iterations)
         dof = edges.shape[0] - 1
     
-    if tail == 'both':
-        alpha = 0.01
-    else:
-        alpha = 0.005
-    t_threshold = t.ppf(1 - alpha, df=dof)
+    #t_threshold = t.ppf(1 - alpha, df=dof)
     
     # really can't remember why tf I did this?
     # maybe it's an artifact of permuted_ols?
@@ -302,7 +315,10 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         train_y = outcome[train_idx]
         test_y = outcome[test_idx]
 
-        train_confounds = confounds.values[train_idx]
+        if confounds is not None:
+            train_confounds = confounds.values[train_idx]
+        else:
+            train_confounds = None
         #test_confounds = confounds.values[test_idx]
         
         # perform NBS wooooooooo
@@ -314,24 +330,25 @@ def kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_s
         cv_results.at[i, 'component'] = adj.values
         
         # in the event of no edges significantly related to <outcome>
-        if sum(adj) > 0:
+        #print(sum(sum(adj.values)), '\n', adj.values.shape)
+        if sum(sum(adj.values)) > 0:
             # grab the values of the adjacency matrix that are just in the upper triangle
             # so you don't have repeated edges
             nbs_vector = adj.values[upper_tri]
             # use those to make a "significant edges" mask
-            mask = nbs_vector == 1
+            mask = nbs_vector == 1.0
 
             # grab only the significant edges from testing and training sets of edges
             # for use as features in the predictive models
             train_features = edges[train_idx, :].T[mask]
             test_features = edges[test_idx, :].T[mask]
 
-
             # train model predicting outcome from brain (note: no mas covariates)
-            model = regressor.fit(X=train_features.T, y=train_y)
-            cv_results.at[i, 'model'] = model
+            #print(train_features.T.shape, train_y.shape)
+            model = regressor.fit(X=train_features.T, y=train_y.ravel())
+            #cv_results.at[i, 'model'] = model
             # score that model on the testing data
-            score = model.score(X=test_features.T, y=test_y)
+            score = model.score(X=test_features.T, y=test_y.ravel())
             cv_results.at[i, 'score'] = score
 
             m = 0
