@@ -23,7 +23,7 @@ import argparse
 from os.path import exists
 #from glob import glob
 #from nilearn import input_data, connectome, plotting, image
-from idconn.connectivity import connectivity, task_connectivity
+from idconn.connectivity import rest_connectivity, task_connectivity
 from idconn.parser_utils import is_valid_file, is_valid_path
 
 #from idconn.networking import graph_theory, null_distribution
@@ -116,12 +116,12 @@ def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym",
             print(f"here are the inputs: {layout, subject, session, task, atlas, conn, space, confounds}")
             if 'rest' in task:
                 try:
-                    adj_matrix = connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                    adj_matrix = rest_connectivity(layout, subject, session, task, atlas, conn, space, confounds)
                 except Exception as e:
                     print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
             if len(conditions) < 1:
                 try:
-                    adj_matrix = connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                    adj_matrix = rest_connectivity(layout, subject, session, task, atlas, conn, space, confounds)
                 except Exception as e:
                     print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
             else:
