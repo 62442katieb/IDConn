@@ -24,7 +24,7 @@ def calc_number_of_nodes(matrices):
         num_node = matrices.shape[0]
     return num_node
 
-def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutations=10000):
+def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=10000):
     '''
     Calculates the Network Based Statistic (Zalesky et al., 2011) on connectivity matrices provided
     of shape ((subject x session)x node x node)
@@ -46,7 +46,7 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     confounds : list-like of shape (p,m)
         Covariates, included as predictors in model.
     alpha : float
-        Type-I error (i.e., false positive) rate, for outcome-related edge detection.
+        Type-I error (i.e., false positive) rate, for outcome-related edge detection. Default = 0.05
     predict : bool
         If True, bypasses `permutations` parameter and only runs edge detection + component identification.
         Used for NBS-Predict.
@@ -67,85 +67,64 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # and retain significant edges
     # then find the largest connected component
     # and, if not predict, build a null distribution
-    n = matrices.shape[0]
+    n = matrices.shape[:-1]
     ndims = len(matrices.shape)
-    #print(ndims)
-    #if ndims >=2
-    num_node = calc_number_of_nodes(matrices)
     
     # vectorize_corrmats returns p x n^2
     # we want to run pynbs per edge
     # so vectorized edges must be transposed
+    
     if confounds is not None:
-        exog = np.hstack((outcome, confounds))
+        #regress out the confounds, use the residuals for the rest of the algorithm
+        pass
     else:
-        exog = outcome
-    exog = sm.add_constant(exog, prepend=False)
+        pass
+    exog = outcome
+    
     # turn matrices into vectorized upper triangles
     if ndims > 2:
         edges = vectorize_corrmats(matrices)
     else:
-        raise ValueError(f'Input matrices have shape {matrices.shape},',
-                             'pyNBS requires matrices of shape (subject x session) x node x node.')
-    edges = edges.T
-    #print(f'\n\n\n{edges.shape}\n\n\n')
+        edges = matrices.copy()
+    #edges = edges.T
     
     # run an ols per edge
     # create significancs matrix for predictor of interest (outcome)
     # 1 if edge is significantly predicted by outcome
     # 0 if it's not
-    sig_edges = []
-    for i in range(0, edges.shape[0]):
-        y = edges[i,:]
-        # statsmodels for regressing predictors on edges
-        #mod = sm.OLS(y, exog, hasconst=True)
-        #results = mod.fit()
-        #edge_pval = results.pvalues[0]
-        
-        # let's try straight up correlations?
-        if len(np.unique(outcome)) > 2:
-            r, edge_pval = pearsonr(outcome.reshape(n,), y.reshape(n,))
-        else:
-            r, edge_pval = pointbiserialr(outcome.reshape(n,), y.reshape(n,))
-        
-        # build binary significance edge vector
-        if edge_pval < alpha:
-            sig_edges.append(1)
-        else:
-            sig_edges.append(0)
+    
+    if len(np.unique(exog)) < 5:
+        (f, p) = f_classif(edges, exog)
+    else:
+        (f, p) = f_regression(edges, exog, center=False)
+    sig_edges = np.where(p < alpha, 1, 0)
     
     # find largest connected component of sig_edges
     # turn sig_edges into an nxn matrix first
-    sig_matrix = undo_vectorize(sig_edges, num_node)
-
-    # turn it into a networkx matrix
+    sig_matrix = undo_vectorize(sig_edges) # need to write this function
     matrix = nx.from_numpy_array(sig_matrix)
     
     #use networkX to find connected components
     largest_cc = max(nx.connected_components(matrix), key=len)
-    G0 = G.subgraph(largest_cc)
+    G0 = matrix.subgraph(largest_cc)
+    print(G0)
     
-    # grab number of edges from G0
-    
-    largest_comp_size = max(size)
-    if predict == False:
-        print(f'Connected component has {largest_comp_size} edges.')
-    else:
-        pass
-
     # retain size of largest connected component 
     # for NBS permutation-based significance testing
-    max_comp = max_comp[0]
+    max_comp = G0.number_of_edges()
+    print(f'Connected component has {max_comp} edges.')
+
+    
+    
 
     # pull the subgraph with largest number of nodes
     # i.e., the largest connected component
-    G = S[max_comp]
-
+    
     # grab list of nodes in largest connected component
-    nodes = list(G.nodes)
+    nodes = list(G0.nodes)
     
     unused_nodes = list(set(matrix.nodes) - set(nodes))
-    S1 = nx.to_pandas_adjacency(G, nodelist=nodes)
+    S1 = nx.to_pandas_adjacency(G0, nodelist=nodes)
 
     # add empty edges for unused nodes
     # bc NBS-Predict needs all nodes for
@@ -153,11 +132,9 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # and NBS might need all nodes for easier
     # plotting in brain space
     for i in unused_nodes:
-        S1.loc[i] = 0.0
-        temp = S1.copy()
-        temp[i] = 0.0
-        S1 = temp.copy()
-    
+        S1.loc[i] = 0
+        S1[i] = 0
+
     S1.sort_index(axis=0, inplace=True)
     S1.sort_index(axis=1, inplace=True)
     
@@ -165,50 +142,47 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     # only for regular NBS, -Predict doesn't need this
     if predict == False:
         perms = np.zeros((permutations,))
+        hit = 0
         rng = np.random.default_rng()
         exog_copy = exog.copy()
         for i in range(0, permutations):
             # shuffle outcome order
             rng.shuffle(exog_copy, axis=0)
             #print(exog_copy)
-            perm_edges = []
-            for j in range(0, edges.shape[0]):
-                # statsmodels for regressing predictors on edges
-                mod = sm.OLS(edges[j,:], exog_copy, hasconst=False)
-                results = mod.fit()
-                edge_pval = results.pvalues[0]
-                
-                if edge_pval < alpha:
-                    perm_edges.append(1)
-                else:
-                    perm_edges.append(0)
+            
+            if len(np.unique(exog)) < 5:
+                (f1, p1) = f_classif(edges, exog_copy)
+            else:
+                (f1, p1) = f_regression(edges, exog_copy, center=False)
+            
+            perm_edges = np.where(p1 < alpha, 1, 0)
+            
             #print(np.sum(perm_edges))
             # find largest connected component of sig_edges
             # turn sig_edges into an nxn matrix first
-            perm_matrix = undo_vectorize(perm_edges, num_node) # need to write this function
+            perm_matrix = undo_vectorize(perm_edges) # need to write this function
             perm_nx = nx.from_numpy_array(perm_matrix)
 
-            #comps = nx.connected_components(perm_nx)
+            largest_cc = max(nx.connected_components(perm_nx), key=len)
+            S = perm_nx.subgraph(largest_cc)
 
+            perm_comp_size = S.number_of_edges()
             
 
-            S = [perm_nx.subgraph(c).copy() for c in comps]
-            perm_size = np.asarray([s.number_of_edges() for s in S])
-            (max_comp, ) = np.where(perm_size == max(perm_size))
-            #print(perm_size, max_comp)
-
             # retain for null distribution
-            perms[i] = max(perm_size)
-            if i % 10 == 0:
-                print(f'p-value is {np.size(np.where(perms >= largest_comp_size)) / permutations} as of permutation {i}')
+            perms[i] = perm_comp_size
+            if i == 0:
+                pass
+            elif i % 100 == 0:
+                print(f'p-value is {np.round(np.sum(np.where(perms >= max_comp, 1, 0)) / i, 3)} as of permutation {i}')
             
             # bctpy nbs code uses hit to mark progress across permutations
             # prob not necessary?
         
         # bctpy calcs pval for all components, not just largest?
         # but I don't think that's relevant for the og implimentation of nbs?
-        pval = np.size(np.where(perms >= largest_comp_size)) / permutations
-        print(largest_comp_size, permutations, pval)
+        pval = np.size(np.where(perms >= max_comp)) / permutations
+        print(max_comp, permutations, pval)
         
         return pval, S1, perms
     else:
