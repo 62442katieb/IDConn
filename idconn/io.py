@@ -19,6 +19,7 @@ def build_statsmodel_json(name, task, contrast, confounds, highpass,
                           mask, conn_meas, graph_meas=None, exclude=None, outfile=None):
     '''
     Creates a BIDS Stats Models json with analysis details for further use.
+    DOES NOT WORK YET.
 
     Parameters
     ----------
@@ -202,16 +203,25 @@ def vectorize_corrmats(matrices):
     edge_vector = np.asarray(edge_vector)
     return edge_vector
 
-def read_corrmats(layout, task, deriv_name='IDConn', atlas=None, conf_measures=None, z_score=True, vectorized=True, verbose=False):
+def read_corrmats(layout, task, deriv_name='IDConn', z_score=True, vectorized=True, verbose=False):
     """Returns a node x node x (subject x session) matrix of correlation matrices  
     from a BIDS derivative folder. Optionally returns a subject x session dataframe
     of confound measures (e.g., motion averages) and/or a node^2 x (subject x session) 
     array of vectorized upper triangles of those correlation matrices.
     Parameters
     ----------
-    matrices : numpy array of shape (n, n, p)
-        Represents the link strengths of the graphs. Assumed to be
-        an array of symmetric matrices.
+    layout : BIDSLayout object
+        BIDSLayout (i.e., pybids layout object) for directory containing data for analysis (with `derivative=True`, as we're using fmriprep output).
+    task : str
+        Name of task fMRI scan (can be "rest") from which networks will be calculated.
+    deriv_name : str
+        Name of the package used to generate the correlation matrices to be read. Could be IDConn, could be something else.
+    z_score : bool
+        If True, assumes computed connectivity matrices are product-moment correlations, uses Fisher's r-to-Z.
+    vectorized : bool
+        Would you also like this function to return the vectorized upper triangles of all your matrices?
+    verbose : bool
+        Print statements? Y/N?
     
     Returns
     -------
@@ -296,6 +306,20 @@ def read_corrmats(layout, task, deriv_name='IDConn', atlas=None, conf_measures=N
     return ppt_df
 
 def undo_vectorize(edges, num_node):
+    '''
+    Puts an edge vector back into an adjacency matrix.
+    Parameters
+    ----------
+    edges : list-like of shape ((n^2-n)/2,) 
+        Vectorized upper triangle of an adjacency matrix.
+    num_node : int
+        The number of nodes in the graph. I would calculate this myself, but I'd rather not.
+    
+    Returns
+    -------
+    matrix : numpy array of size (n,n)
+        Symmetric array of connectivity values.
+    '''
     #j = len(edges)
     #num_node = (np.sqrt((8 * j) + 1) + 1) / 2
     X = np.zeros((num_node,num_node))
@@ -303,7 +327,37 @@ def undo_vectorize(edges, num_node):
     X = X + X.T
     return X
 
-def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='vlag', node_size='strength'):
+def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='coolwarm', node_size='strength'):
+    '''
+    Plots the edges of a connectivity/adjacency matrix both in a heatmap and in brain space, with the option to include
+    a surface plot of node strength.
+    Parameters
+    ----------
+    adj : array-like of shape (n, n) 
+        Adjacency matrix to be plotted. Can be numpy array or Pandas dataframe.
+    atlas_nii : str
+        Path to the atlas used to define nodes in the adjacency matrix. 
+        Should be one value per node, with the same number of values as rows and columns in adj (i.e., n).
+        Background should be 0, should be in MNI space.
+    threshold : int
+        Percentile of edges to plot, between 0 and 100 such that 0 plots all the edges and 100 plots none. 
+        If not specified, default is 99, which plots the top 1% of edges.
+    title : str
+        Title for plots. 
+    strength : bool
+        If True, plots surface maps of node strength (i.e., the sum of all a node's edge weights) 
+    cmap : str
+        One of the matplotlib colormaps. 
+    node_size : int or 'strength'
+        Size to plot nodes in brain space. If 'strength', node size varies according to a node's summed edges (i.e., strength).
+    
+    Returns
+    -------
+    fig1 : Matplotlib figure object
+        Connectivity figure.
+    fig2 : Matplotlib figure object
+        If `strength=True`,  the surface node strength plot.
+    '''
     coords = plotting.find_parcellation_cut_coords(atlas_nii)
     num_node = adj.shape[0]
     # only plot the top t% of edges
@@ -331,12 +385,12 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
     g = plotting.plot_connectome(adj, coords, 
                                 node_size=node_size,
                                 edge_threshold=threshold, 
-                                edge_cmap=cmap, 
+                                edge_cmap='coolwarm', 
                                 figure=fig, 
                                 axes=ax0,
                                 colorbar=False, 
                                 annotate=False)
-    h = sns.heatmap(adj, square=True, cmap=cmap, ax=ax1, center=0)
+    h = sns.heatmap(adj, square=True, cmap='coolwarm', ax=ax1, center=0)
     if strength:
         fig2 = plt.figure(figsize=(12,4))
         if title is not None:
@@ -347,7 +401,8 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
         for i in np.arange(0,num_node):
             regn_sch_arr[np.where(regn_sch_arr == i+1)] = np.sum(adj[i])
         strength_nimg = nib.Nifti1Image(regn_sch_arr, nimg.affine)
-        nib.save(strength_nimg, '/Users/katherine.b/Dropbox/HC_Use_predictive-strength.nii')
+        # replace this filename with BIDSy output
+        #nib.save(strength_nimg, f'/Users/katherine.b/Dropbox/{title}predictive-strength.nii')
 
         gs = GridSpec(1, 4)
         # plot edge weights on surfaces
@@ -361,13 +416,13 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
 
         plt.tight_layout(w_pad=-1)
         i = plotting.plot_surf_stat_map(fsaverage.pial_left, texture_l, symmetric_cbar=False, threshold=0.5,
-                                                cmap=cmap, view='lateral', colorbar=False, axes=ax2)
+                                                cmap='coolwarm', view='lateral', colorbar=False, axes=ax2)
         j = plotting.plot_surf_stat_map(fsaverage.pial_left, texture_l, symmetric_cbar=False, threshold=0.5,
-                                                cmap=cmap, view='medial', colorbar=False, axes=ax3)
+                                                cmap='coolwarm', view='medial', colorbar=False, axes=ax3)
         k = plotting.plot_surf_stat_map(fsaverage.pial_right, texture_r, symmetric_cbar=False, threshold=0.5,
-                                                cmap=cmap, view='lateral', colorbar=False, axes=ax4)
+                                                cmap='coolwarm', view='lateral', colorbar=False, axes=ax4)
         l = plotting.plot_surf_stat_map(fsaverage.pial_right, texture_r, symmetric_cbar=False, threshold=0.5,
-                                                cmap=cmap, view='medial', colorbar=False, axes=ax5)
+                                                cmap='coolwarm', view='medial', colorbar=False, axes=ax5)
         return fig, fig2
     else:
         return fig
