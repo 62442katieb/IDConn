@@ -11,12 +11,13 @@ today = datetime.today()
 today_str = strftime("%m_%d_%Y")
 
 TRAIN_DSET = '/Users/katherine.b/Dropbox/Data/ds002674'
-TEST_DSET = '/Users/katherine.b/Dropbox/Data/diva-dset'
+TEST_DSET = '/Users/katherine.b/Dropbox/Data/ds002674'
 DERIV_NAME = 'IDConn'
 OUTCOME = 'estradiol'
-CONFOUNDS = ['bc']
+CONFOUNDS = None
 TASK = 'rest'
 ATLAS = 'craddock2012'
+alpha = 0.01
 atlas_fname = '/Users/katherine.b/Dropbox/HPC-Backup-083019/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz'
 
 layout = bids.BIDSLayout(TRAIN_DSET, derivatives=True)
@@ -36,10 +37,9 @@ if CONFOUNDS is not None:
     confounds = dat[CONFOUNDS]
 else:
     confounds = None
-alpha = 0.1
-fig_dir = '/Users/katherine.b/Dropbox/Projects/IDConn'
 
-cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=1000)
+
+cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, tail='both', groups=None, n_splits=10, n_iterations=10)
 
 cv_results.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_models-{today_str}.tsv'),sep='\t')
 best = cv_results[cv_results['score'] == cv_results['score'].max()].index[0]
@@ -84,11 +84,11 @@ test_outcome = test_df[OUTCOME].values
 # if the model is a linear regression, i.e., with a continuous outcome
 # then the score is R^2 (coefficient of determination)
 score = model.score(test_features.T, test_outcome)
-print('Independent prediction accuracy:\t', score)
+print('Out-of-sample prediction score:\t', score)
 pred_outcome = model.predict(test_features.T)
 if len(np.unique(test_outcome)) > 2:
     corr = spearmanr(test_outcome, pred_outcome)
-    print('\nSpearman correlation:\t', corr)
+    print(f'\nSpearman correlation between predicted and actual {OUTCOME}:\t', corr)
     np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_score-{today_str}.txt'), [score, corr[0], corr[1]])
 else: 
     np.savetxt(join(TEST_DSET, 'derivatives', DERIV_NAME, f'nbs-predict__outcome-{OUTCOME}_score-{today_str}.txt'), [score])
