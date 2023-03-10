@@ -8,6 +8,7 @@ import enlighten
 #import bct
 
 from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
+from sklearn.feature_selection import f_regression, f_classif
 from sklearn.linear_model import LogisticRegression, LinearRegression
 
 def calc_number_of_nodes(matrices):
@@ -115,17 +116,17 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
     
     # find largest connected component of sig_edges
     # turn sig_edges into an nxn matrix first
-    sig_matrix = undo_vectorize(sig_edges, num_node) # need to write this function
+    sig_matrix = undo_vectorize(sig_edges, num_node)
+
+    # turn it into a networkx matrix
     matrix = nx.from_numpy_array(sig_matrix)
     
     #use networkX to find connected components
-    comps = nx.connected_components(matrix)
+    largest_cc = max(nx.connected_components(matrix), key=len)
+    G0 = G.subgraph(largest_cc)
     
-    # rearrange networkx output into an array of matrices, S
-    S = [matrix.subgraph(c).copy() for c in comps]
-    # find size of each connected component, s in S
-    size = np.asarray([s.number_of_edges() for s in S])
-    (max_comp, ) = np.where(size == max(size))
+    # grab number of edges from G0
+    
     largest_comp_size = max(size)
     if predict == False:
         print(f'Connected component has {largest_comp_size} edges.')
@@ -187,7 +188,9 @@ def pynbs(matrices, outcome, confounds=None, alpha=0.05, predict=False, permutat
             perm_matrix = undo_vectorize(perm_edges, num_node) # need to write this function
             perm_nx = nx.from_numpy_array(perm_matrix)
 
-            comps = nx.connected_components(perm_nx)
+            #comps = nx.connected_components(perm_nx)
+
+            
 
             S = [perm_nx.subgraph(c).copy() for c in comps]
             perm_size = np.asarray([s.number_of_edges() for s in S])
