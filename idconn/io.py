@@ -15,6 +15,7 @@ from matplotlib.gridspec import GridSpec
 from nilearn import datasets, plotting, surface
 
 
+
 def build_statsmodel_json(name, task, contrast, confounds, highpass, 
                           mask, conn_meas, graph_meas=None, exclude=None, outfile=None):
     '''
@@ -203,43 +204,47 @@ def vectorize_corrmats(matrices):
     edge_vector = np.asarray(edge_vector)
     return edge_vector
 
-def read_corrmats(layout, task, deriv_name='IDConn', z_score=True, vectorized=True, verbose=False):
+def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True, verbose=False):
     """Returns a node x node x (subject x session) matrix of correlation matrices  
-    from a BIDS derivative folder. Optionally returns a subject x session dataframe
-    of confound measures (e.g., motion averages) and/or a node^2 x (subject x session) 
+    from a BIDS derivative folder. Optionally returns a node^2 x (subject x session) 
     array of vectorized upper triangles of those correlation matrices.
     Parameters
     ----------
-    layout : BIDSLayout object
-        BIDSLayout (i.e., pybids layout object) for directory containing data for analysis (with `derivative=True`, as we're using fmriprep output).
+    layout : BIDSLayout or str
+        A valid BIDSLayout or directory. If BIDSLayout, must be generated with derivatives=True,
+        in order to find the derivatives folder containing the relevant correlation matrices.
     task : str
-        Name of task fMRI scan (can be "rest") from which networks will be calculated.
+        The task used to collect fMRI data from which correlation matrices were computed.
     deriv_name : str
-        Name of the package used to generate the correlation matrices to be read. Could be IDConn, could be something else.
-    z_score : bool
-        If True, assumes computed connectivity matrices are product-moment correlations, uses Fisher's r-to-Z.
-    vectorized : bool
-        Would you also like this function to return the vectorized upper triangles of all your matrices?
-    verbose : bool
-        Print statements? Y/N?
+        The name of the derivatives subdirectory in which correlation matrices can be found
+    atlas: str
+        The name of the atlas used to make the correlation matrix. Must match the string in corrmat filename.
+    z_score : Bool
+        Would you like the correlation matrices z-scored? (Uses Fishers r-to-z, 
+        thus assumes elements/edges of corrmats are product-moment correlations).
+    vectorized : Bool
+        If True, returns the vectorized upper triangles of correlation matrices in a p x (n^2 - n)/2 array. 
+        If false, returns the full correlation matrices in a p x n x n array.
+    verbose : Bool
+        If True, prints out subjects/sessions as their correlationmatrices are being read. 
+        If False, prints nothing.
     
     Returns
     -------
-    edge_vector : numpy array of shape (p, n^2)
+    # NOT TRUE CURRENTLY RETURNS DATAFRAME
+    edge_vector : numpy array of shape (p, (n^2-n)/2)
         Represents an array of vectorized upper triangles of 
-        the input matrices.
+        the input nxn matrices if vectorized=True.
+    edge_cube : numpy array of shape (p, n^2)
+        Represents an array of the input nxn matrices 
+        if vectorized=False.
     """
     subjects = layout.get(return_type='id', 
                           target='subject', 
                           suffix='bold', 
                           scope=deriv_name
                          )
-    all_sesh = layout.get(return_type='id',
-           target='session',
-           task=task, 
-           suffix='bold',
-           scope=deriv_name
-          )
+    
     ppts_fname = layout.get_file('participants.tsv').path
     ppt_df = pd.read_csv(ppts_fname, sep='\t', index_col=[0,1])
     ppt_df['adj'] = ''
@@ -258,7 +263,9 @@ def read_corrmats(layout, task, deriv_name='IDConn', z_score=True, vectorized=Tr
                               subject=subject, 
                               scope=deriv_name)
         
+        
         for session in sessions:
+            
             if verbose:
                 print(session)
             else:
@@ -267,21 +274,22 @@ def read_corrmats(layout, task, deriv_name='IDConn', z_score=True, vectorized=Tr
                                task=task, 
                                subject=subject,
                                session=session,
+                                atlas=atlas,
                                suffix='bold',
-                               scope='IDConn', 
-                               atlas=atlas,
+                               scope='IDConn'
                               )
             if verbose:
                 print(f'Corrmat path for sub-{subject}, ses-{session}: \t{path}')
             else:
                 pass
             if type(path) == list:
-                #print(path)
+                #print(len(path))
                 path = path[0]
             else:
                 pass
             assert exists(path), f'Corrmat file not found at {path}'
             adj_matrix = pd.read_csv(path, sep='\t', header=0, index_col=0)
+            
             if z_score == True:
                 z_adj = np.arctanh(adj_matrix.values)
                 z_adj = np.where(z_adj == np.inf, 0, z_adj)
@@ -305,7 +313,7 @@ def read_corrmats(layout, task, deriv_name='IDConn', z_score=True, vectorized=Tr
     ppt_df.replace({'': np.nan}, inplace=True)
     return ppt_df
 
-def undo_vectorize(edges, num_node):
+def undo_vectorize(edges, num_node=None):
     '''
     Puts an edge vector back into an adjacency matrix.
     Parameters
@@ -322,12 +330,17 @@ def undo_vectorize(edges, num_node):
     '''
     #j = len(edges)
     #num_node = (np.sqrt((8 * j) + 1) + 1) / 2
+    if num_node == None:
+        j = len(edges)
+        num_node = int((np.sqrt((8 * j) + 1) + 1) / 2)
+    else:
+        num_node = int(num_node)
     X = np.zeros((num_node,num_node))
     X[np.triu_indices(X.shape[0], k = 1)] = edges
     X = X + X.T
     return X
 
-def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='coolwarm', node_size='strength'):
+def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap='seismic', node_size='strength'):
     '''
     Plots the edges of a connectivity/adjacency matrix both in a heatmap and in brain space, with the option to include
     a surface plot of node strength.
@@ -366,18 +379,20 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
     elif type(threshold) == float or type(threshold) == int:
         threshold = f'{threshold}%'
     else:
-        threshold = '99%'
+        threshold = '99.99%'
     print('edge plotting threshold: ', threshold)
 
     if node_size == 'strength':
-        node_strength = np.sum((np.abs(adj)), axis=0)
-        node_strength /= np.max(node_strength)
-        node_strength **= 4
+        node_strength = np.sum(adj, axis=0)
+        #node_strength /= np.max(node_strength)
+        #node_strength **= 4
+        node_strength = node_strength / np.max(node_strength) * 60
         node_size = node_strength
+    
     fig = plt.figure(figsize=(12,4))
     if title is not None:
         fig.suptitle(title)
-    gs = GridSpec(1, 2, width_ratios=[4,2])
+    gs = GridSpec(1, 2, width_ratios=[3,1])
     ax0 = fig.add_subplot(gs[0])
     ax1 = fig.add_subplot(gs[1])
 
@@ -385,12 +400,14 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
     g = plotting.plot_connectome(adj, coords, 
                                 node_size=node_size,
                                 edge_threshold=threshold, 
-                                edge_cmap='coolwarm', 
+                                edge_cmap=cmap,
+                                edge_kwargs={'alpha': 0.4},
+                                display_mode='lyrz', 
                                 figure=fig, 
                                 axes=ax0,
                                 colorbar=False, 
-                                annotate=False)
-    h = sns.heatmap(adj, square=True, cmap='coolwarm', ax=ax1, center=0)
+                                annotate=True)
+    h = sns.heatmap(adj, square=True, linewidths=0, cmap=cmap, ax=ax1, center=0)
     if strength:
         fig2 = plt.figure(figsize=(12,4))
         if title is not None:
@@ -416,13 +433,13 @@ def plot_edges(adj, atlas_nii, threshold=None, title=None, strength=False, cmap=
 
         plt.tight_layout(w_pad=-1)
         i = plotting.plot_surf_stat_map(fsaverage.pial_left, texture_l, symmetric_cbar=False, threshold=0.5,
-                                                cmap='coolwarm', view='lateral', colorbar=False, axes=ax2)
+                                                cmap=cmap, view='lateral', colorbar=False, axes=ax2)
         j = plotting.plot_surf_stat_map(fsaverage.pial_left, texture_l, symmetric_cbar=False, threshold=0.5,
-                                                cmap='coolwarm', view='medial', colorbar=False, axes=ax3)
+                                                cmap=cmap, view='medial', colorbar=False, axes=ax3)
         k = plotting.plot_surf_stat_map(fsaverage.pial_right, texture_r, symmetric_cbar=False, threshold=0.5,
-                                                cmap='coolwarm', view='lateral', colorbar=False, axes=ax4)
+                                                cmap=cmap, view='lateral', colorbar=False, axes=ax4)
         l = plotting.plot_surf_stat_map(fsaverage.pial_right, texture_r, symmetric_cbar=False, threshold=0.5,
-                                                cmap='coolwarm', view='medial', colorbar=False, axes=ax5)
-        return fig, fig2
+                                                cmap=cmap, view='medial', colorbar=False, axes=ax5)
+        return fig, fig2, strength_nimg
     else:
         return fig

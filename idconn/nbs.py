@@ -1,5 +1,5 @@
 import numpy as np
-import statsmodels.api as sm
+import pingouin as pg
 import networkx as nx
 import pandas as pd
 from idconn.io import vectorize_corrmats, undo_vectorize
@@ -7,9 +7,13 @@ from scipy.stats import t, pearsonr, pointbiserialr, spearmanr
 import enlighten
 #import bct
 
-from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
+from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold, GridSearchCV, StratifiedKFold, KFold
+
 from sklearn.feature_selection import f_regression, f_classif
-from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import LogisticRegression, ElasticNet
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.metrics import mean_squared_error
 
 def calc_number_of_nodes(matrices):
     if matrices.shape[0] != matrices.shape[1]:
@@ -24,7 +28,41 @@ def calc_number_of_nodes(matrices):
         num_node = matrices.shape[0]
     return num_node
 
-def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=10000):
+def residualize(X, y=None, confounds=None):
+    # residualize the outcome
+    if confounds is not None:
+        if y is not None:
+            temp_y = np.reshape(y, (y.shape[0],))
+            y = pg.linear_regression(confounds, temp_y)
+            resid_y = y.residuals_
+
+            # residualize features
+            resid_X = np.zeros_like(X)
+            #print(X.shape, resid_X.shape)
+            for i in range(0, X.shape[1]):
+                X_temp = X[:,i]
+                #print(X_temp.shape)
+                X_ = pg.linear_regression(confounds, X_temp)
+                #print(X_.residuals_.shape)
+                resid_X[:,i] = X_.residuals_.flatten()
+            return resid_y, resid_X
+        else:
+            # residualize features
+            resid_X = np.zeros_like(X)
+            #print(X.shape, resid_X.shape)
+            for i in range(0, X.shape[1]):
+                X_temp = X[:,i]
+                #print(X_temp.shape)
+                X_ = pg.linear_regression(confounds, X_temp)
+                #print(X_.residuals_.shape)
+                resid_X[:,i] = X_.residuals_.flatten()
+            return resid_X
+    else:
+        print('Confound matrix wasn\'t provided, so no confounding was done')
+        
+    
+
+def pynbs(matrices, outcome, alpha=0.05, predict=False, permutations=10000):
     '''
     Calculates the Network Based Statistic (Zalesky et al., 2011) on connectivity matrices provided
     of shape ((subject x session)x node x node)
@@ -67,25 +105,19 @@ def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=
     # and retain significant edges
     # then find the largest connected component
     # and, if not predict, build a null distribution
-    n = matrices.shape[:-1]
+    #n = matrices.shape[:-1]
     ndims = len(matrices.shape)
     
     # vectorize_corrmats returns p x n^2
-    # we want to run pynbs per edge
-    # so vectorized edges must be transposed
-    
-    if confounds is not None:
-        #regress out the confounds, use the residuals for the rest of the algorithm
-        pass
-    else:
-        pass
-    exog = outcome
-    
+
     # turn matrices into vectorized upper triangles
     if ndims > 2:
         edges = vectorize_corrmats(matrices)
     else:
         edges = matrices.copy()
+    #print(edges.shape)
+    
+    
     #edges = edges.T
     
     # run an ols per edge
@@ -93,10 +125,10 @@ def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=
     # 1 if edge is significantly predicted by outcome
     # 0 if it's not
     
-    if len(np.unique(exog)) < 5:
-        (f, p) = f_classif(edges, exog)
+    if len(np.unique(outcome)) < 5:
+        (f, p) = f_classif(X=edges, y=outcome)
     else:
-        (f, p) = f_regression(edges, exog, center=False)
+        (f, p) = f_regression(X=edges, y=outcome, center=False)
     sig_edges = np.where(p < alpha, 1, 0)
     
     # find largest connected component of sig_edges
@@ -107,15 +139,12 @@ def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=
     #use networkX to find connected components
     largest_cc = max(nx.connected_components(matrix), key=len)
     G0 = matrix.subgraph(largest_cc)
-    print(G0)
+    #print(G0)
     
     # retain size of largest connected component 
     # for NBS permutation-based significance testing
     max_comp = G0.number_of_edges()
-    print(f'Connected component has {max_comp} edges.')
-
-    
-    
+    #print(f'Connected component has {max_comp} edges.')    
 
     # pull the subgraph with largest number of nodes
     # i.e., the largest connected component
@@ -142,18 +171,17 @@ def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=
     # only for regular NBS, -Predict doesn't need this
     if predict == False:
         perms = np.zeros((permutations,))
-        hit = 0
         rng = np.random.default_rng()
-        exog_copy = exog.copy()
+        outcome_copy = outcome.copy()
         for i in range(0, permutations):
             # shuffle outcome order
-            rng.shuffle(exog_copy, axis=0)
-            #print(exog_copy)
+            rng.shuffle(outcome_copy, axis=0)
+            #print(outcome_copy)
             
-            if len(np.unique(exog)) < 5:
-                (f1, p1) = f_classif(edges, exog_copy)
+            if len(np.unique(outcome)) < 5:
+                (f1, p1) = f_classif(edges, outcome_copy)
             else:
-                (f1, p1) = f_regression(edges, exog_copy, center=False)
+                (f1, p1) = f_regression(edges, outcome_copy, center=False)
             
             perm_edges = np.where(p1 < alpha, 1, 0)
             
@@ -188,7 +216,7 @@ def pynbs(matrices, outcome, confounds, alpha=0.05, predict=False, permutations=
     else:
         return S1
 
-def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10, n_iterations=10):
+def kfold_nbs(matrices, outcome, confounds=None, alpha=0.05, groups=None, n_splits=10, n_iterations=10):
     """Calculates the Network Based Statistic (Zalesky et al., 20##) on connectivity matrices provided
     of shape ((subject x session)x node x node)
     in the network.
@@ -207,13 +235,15 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
     outcome : list-like of shape (p,)
         Y-value to be predicted with connectivity
     confounds : list-like
-        Names of columns in `participants.tsv` to be regressed out of connectivity and outcome 
+        Columns in `participants.tsv` to be regressed out of connectivity and outcome 
         data in each CV fold (per recommendation from Snoek et al., 2019).
     alpha : float
         Proportion of type II errors (i.e., false positives) we're willing to put up with. 
         This is the upper limit for pvalues in the edge detection process.
     groups : list-like of shape (p,)
         Grouping variable - currently only works for 2 groups. Will enforce stratified k-fold CV.
+        Currently intended for use where grouping variable is the outcome of interest, assumed by StratifiedKFold.
+        NEED TO FIX THIS: ALLOW THE CASE WHERE GROUPING VAR != OUTCOME VAR
     n_splits : int
         Value of K for K-fold cross-validation. Will split data into K chunks, train on K-1 chunks and test on the Kth.
     n_iterations : int
@@ -231,6 +261,7 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
     """
     edges = vectorize_corrmats(matrices)
     #print(edges.shape)
+    #print(edges.shape)
     index = list(range(0,n_splits * n_iterations))
 
     cv_results = pd.DataFrame(index=index, 
@@ -244,16 +275,13 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
     if groups is not None:
         cv = RepeatedStratifiedKFold(n_splits=n_splits,
                                     n_repeats=n_iterations)
-        dof = groups.shape[0] - 2
+        split_y = groups
+        
     else:
         cv = RepeatedKFold(n_splits=n_splits, 
-                        n_repeats=n_iterations)
-        dof = edges.shape[0] - 1
+                        n_repeats=n_iterations) 
+        split_y = outcome   
     
-    #t_threshold = t.ppf(1 - alpha, df=dof)
-    
-    # really can't remember why tf I did this?
-    # maybe it's an artifact of permuted_ols?
     num_node = calc_number_of_nodes(matrices)
     #print(num_node)
     #if matrices.shape[0] != matrices.shape[1]:
@@ -271,36 +299,50 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
     i = 0
     manager = enlighten.get_manager()
     ticks = manager.counter(total=n_splits * n_iterations, desc='Progress', unit='folds')
-    for train_idx, test_idx in cv.split(edges, outcome, groups=groups):
+    for train_idx, test_idx in cv.split(edges, split_y):
+        scaler = StandardScaler()
         cv_results.at[i, 'split'] = (train_idx, test_idx)
-        # all of this presumes the old bctpy version of nbs
-        # irrelevant for pynbs
         
         #assert len(train_a_idx) == len(train_b_idx)
-        if groups is not None:
-            train_a_idx = [m for m in train_idx if groups[m] == 0]
-            train_b_idx = [m for m in train_idx if groups[m] == 1]
-            regressor = LogisticRegression(max_iter=1000)
-        elif np.unique(outcome).shape[0] == 2:
-            regressor = LogisticRegression(max_iter=1000)
+        if np.unique(outcome).shape[0] == 2:
+            regressor = LogisticRegression(l1_ratio=0.25, max_iter=1000, penalty='elasticnet', solver='saga')
         else:
-            regressor = LinearRegression()
-        train_mats = matrices[train_idx,:,:]
-        #print(train_a.shape, train_b.shape)
-        
-        # separate edges & covariates into 
+            regressor = ElasticNet(l1_ratio=0.25, max_iter=1000)
+
         train_y = outcome[train_idx]
         test_y = outcome[test_idx]
 
+        train_edges = edges[train_idx, :]
+        test_edges = edges[test_idx, :]
+        
         if confounds is not None:
             train_confounds = confounds.values[train_idx]
+            test_confounds = confounds.values[test_idx]
+            #print(train_edges.shape, train_confounds.shape, train_y.shape)
+            
+            # residualize the edges and outcome
+            if np.unique(outcome).shape[0] == 2:
+                train_edges = residualize(train_edges,train_confounds)
+                test_edges = residualize(test_edges, test_confounds)
+            elif np.unique(outcome).shape[0] > 3:
+                train_y, train_edges = residualize(train_edges, train_y, train_confounds)
+                test_y, test_edges = residualize(test_edges, test_y, test_confounds)
         else:
-            train_confounds = None
-        #test_confounds = confounds.values[test_idx]
+            pass
+        
+        train_edges = scaler.fit_transform(train_edges)
+        test_edges = scaler.fit_transform(test_edges)
+
+        if np.unique(outcome).shape[0] == 2:
+            pass
+        else:
+            train_y = scaler.fit_transform(train_y.reshape(-1, 1))
+            test_y = scaler.fit_transform(test_y.reshape(-1, 1))
         
         # perform NBS wooooooooo
         # note: output is a dataframe :)
-        adj = pynbs(train_mats, train_y, train_confounds, alpha, predict=True)
+        # PYNBS SHOULD NOT DO CONFOUND REGRESSION?
+        adj = pynbs(train_edges, train_y, alpha, predict=True)
         #print(adj.shape, adj.ndim, adj[0].shape, upper_tri)
         
         #cv_results.at[i, 'pval'] = pval
@@ -311,28 +353,45 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
         if sum(sum(adj.values)) > 0:
             # grab the values of the adjacency matrix that are just in the upper triangle
             # so you don't have repeated edges
+            # returns (n_edges, )
             nbs_vector = adj.values[upper_tri]
+            #print(nbs_vector.shape)
             # use those to make a "significant edges" mask
             mask = nbs_vector == 1.0
 
             # grab only the significant edges from testing and training sets of edges
             # for use as features in the predictive models
-            train_features = edges[train_idx, :].T[mask]
-            test_features = edges[test_idx, :].T[mask]
+            # these are already residualized
+            #print(train_edges.shape)
+            # returns (n_edges, samples)
+            train_features = train_edges.T[mask]
+            test_features = test_edges.T[mask]
 
+            train_features = scaler.fit_transform(train_features.T)
+            test_features = scaler.fit_transform(test_features.T)
+            #print(np.ravel(train_y))
             # train model predicting outcome from brain (note: no mas covariates)
-            #print(train_features.T.shape, train_y.shape)
-            model = regressor.fit(X=train_features.T, y=train_y.ravel())
-            #cv_results.at[i, 'model'] = model
+            model = regressor.fit(X=train_features, y=np.ravel(train_y))
+            cv_results.at[i, 'model'] = model
+            
             # score that model on the testing data
-            score = model.score(X=test_features.T, y=test_y.ravel())
+            # if logistic regression: score = mean accuracy
+            # if linear regression: score = coefficient of determination (R^2)
+            # both from 0 (low) to 1 (high)
+            score = model.score(X=test_features, y=np.ravel(test_y))
             cv_results.at[i, 'score'] = score
+            #print(model.coef_.shape)
 
             m = 0
             param_vector = np.zeros_like(nbs_vector)
             for l in range(0, nbs_vector.shape[0]):
                 if nbs_vector[l] == 1.:
-                    param_vector[l] = model.coef_[0,m]
+                    ###
+                    # NEEDS IF STATEMENT BC LOGISTIC AND LINEAR HAVE DIFFERENT COEF_ SHAPES
+                    if np.unique(outcome).shape[0] == 2:
+                        param_vector[l] = model.coef_[0,m]
+                    else:
+                        param_vector[l] = model.coef_[m]   
                     m+=1
                 else:
                     pass
@@ -343,4 +402,17 @@ def kfold_nbs(matrices, outcome, confounds, alpha=0.05, groups=None, n_splits=10
         else:
             pass
         ticks.update()
-    return cv_results
+    # calculate weighted average
+    #print(cv_results['score'])
+    weighted_stack = cv_results.at[0, 'component'] * cv_results.at[0, 'score']
+    #print(weighted_stack.shape)
+    for j in index[1:]:
+        #print(cv_results.at[j, 'score'])
+        if cv_results.at[j, 'score'] > 0:
+            weighted = cv_results.at[j, 'component'] * cv_results.at[j, 'score']
+            weighted_stack = np.dstack([weighted_stack, weighted])
+        else:
+            pass
+        #print(weighted_stack.shape, weighted.shape)
+    weighted_average = np.mean(weighted_stack, axis=-1)
+    return weighted_average, cv_results
