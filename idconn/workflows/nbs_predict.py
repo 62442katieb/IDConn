@@ -27,7 +27,7 @@ TRAIN_DSET = '/Users/katherine.b/Dropbox/Data/ds002674'
 TEST_DSET = '/Users/katherine.b/Dropbox/Data/diva-dset'
 DERIV_NAME = 'IDConn'
 OUTCOME = 'bc'
-CONFOUNDS = 'fd'
+CONFOUNDS = 'framewise_displacement'
 TASK = 'rest'
 ATLAS = 'craddock2012'
 alpha = 0.05
@@ -90,19 +90,7 @@ avg_df.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'{base_name}_weighted
 # - increases parsimony while handling multicollinearity...
 # either way, I don't think cv_results is necessary
 
-#best = cv_results[cv_results['score'] == cv_results['score'].max()].index[0]
-#subnetwork = cv_results.loc[best]['component']
-#subnetwork_df = pd.DataFrame(subnetwork,
-#                             index=range(0,num_node), 
-#                             columns=range(0,num_node))
-
-#if CONFOUNDS is not None:
-#    subnetwork_df.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_confounds-{CONFOUNDS}_edge-parameters-{today_str}.tsv'),sep='\t')
-#else:
-#    subnetwork_df.to_csv(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'nbs-predict_outcome-{OUTCOME}_edge-parameters-{today_str}.tsv'),sep='\t')
-
 # here is where we'd threshold the weighted average to use for elastic-net
-
 nbs_vector = weighted_average[upper_tri]
 p50 = np.percentile(nbs_vector, 50)
 filter = np.where(nbs_vector >= p50, True, False)
@@ -111,36 +99,29 @@ filter = np.where(nbs_vector >= p50, True, False)
 #mask = io.vectorize_corrmats(filter)
 edges_train = np.vstack(dat['edge_vector'].dropna().values)
 
-#print(features.shape)
-
-scaler = StandardScaler()
-edges_train = scaler.fit_transform(edges_train)
-if len(np.unique(outcome)) <= 2:
-    pass
-else:
-    outcome = scaler.fit_transform(outcome)
-
-
-#edges = np.vstack(dat['edge_vector'].values)
-#features = edges[:,mask]
-
 # NEED TO RESIDUALIZE IF CONFOUNDS IS NOT NONE
 if CONFOUNDS is not None:
+    confounds_train = dat[CONFOUNDS].values
+    outcome_train = np.reshape(outcome, (outcome.shape[0],))
     #regress out the confounds from each edge and the outcome variable, 
     # use the residuals for the rest of the algorithm
     #print(confounds.shape, outcome.shape)
-    outcome_train = np.reshape(outcome, (outcome.shape[0],))
-    y = pg.linear_regression(confounds, outcome_train)
-    train_outcome = y.residuals_
-
-    resid_edges = np.zeros_like(edges_train)
-    for i in range(0, edges_train.shape[1]):
-        x = pg.linear_regression(confounds, edges_train[:,i])
-        resid_edges[:,i] = x.residuals_
+    if np.unique(outcome).shape[0] == 2:
+        resid_edges = nbs.residualize(X=edges_train, confounds=confounds_train)
+        train_outcome = outcome
+    elif np.unique(outcome).shape[0] > 3:
+        train_outcome, resid_edges = nbs.residualize(X=edges_train, y=outcome_train, confounds=confounds_train)
     train_features = resid_edges[:,filter]
 else:
     train_features = edges_train[:,filter]
     train_outcome = outcome
+
+scaler = StandardScaler()
+train_features = scaler.fit_transform(train_features)
+if len(np.unique(train_outcome)) <= 2:
+    pass
+else:
+    outcome_test = scaler.fit_transform(train_outcome.reshape(-1, 1))
 
 # run the model on the whole test dataset to get params
 
@@ -210,38 +191,36 @@ keep = test_df[[OUTCOME, 'adj']].dropna().index
 #print(keep)
 
 test_df = test_df.loc[keep]
-
 outcome_test = test_df[OUTCOME].values
-
-if len(np.unique(outcome_test)) <= 2:
-    pass
-else:
-    outcome_test = scaler.fit_transform(outcome_test.reshape(-1, 1))
+#print(test_df)
 
 #print(outcome_test)
 matrices_test = np.vstack(test_df['adj'].dropna().values).reshape((len(test_df['adj'].dropna().index),num_node,num_node))
 edges_test = np.vstack(test_df['edge_vector'].dropna().values)
-edges_test = scaler.fit_transform(edges_test)
 
 # NEED TO RESIDUALIZE IF CONFOUNDS IS NOT NONE
-if confounds is not None:
+if CONFOUNDS is not None:
     confounds_test = test_df[CONFOUNDS].values
+    
     #regress out the confounds from each edge and the outcome variable, 
     # use the residuals for the rest of the algorithm
     #print(confounds.shape, outcome.shape)
-    outcome_test = np.reshape(outcome_test, (outcome_test.shape[0],))
-    y = pg.linear_regression(confounds_test, outcome_test)
-    test_outcome = y.residuals_
-
-    resid_edges = np.zeros_like(edges_test)
-    for i in range(0, edges_test.shape[1]):
-        x = pg.linear_regression(confounds_test, edges_test[:,i])
-        resid_edges[:,i] = x.residuals_
+    if np.unique(outcome_test).shape[0] == 2:
+        resid_edges = nbs.residualize(X=edges_test, confounds=confounds_test)
+        test_outcome = outcome_test
+    elif np.unique(outcome_test).shape[0] > 3:
+        test_outcome, resid_edges = nbs.residualize(X=edges_test, y=outcome_test, confounds=confounds_test)
     test_features = resid_edges[:,filter]
 else:
     test_features = edges_test[:,filter]
     test_outcome = outcome_test
 
+# scale after residualizing omg
+test_features = scaler.fit_transform(test_features)
+if len(np.unique(test_outcome)) <= 2:
+    pass
+else:
+    test_outcome = scaler.fit_transform(test_outcome.reshape(-1, 1))
 #print(test_features.shape)
 # if the model is a logistic regression, i.e. with a binary outcome
 # then score is prediction accuracy

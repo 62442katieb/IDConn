@@ -322,11 +322,11 @@ def kfold_nbs(matrices, outcome, confounds=None, alpha=0.05, groups=None, n_spli
             
             # residualize the edges and outcome
             if np.unique(outcome).shape[0] == 2:
-                train_edges = residualize(train_edges,train_confounds)
-                test_edges = residualize(test_edges, test_confounds)
+                train_edges = residualize(X=train_edges, confounds=train_confounds)
+                test_edges = residualize(X=test_edges, confounds=test_confounds)
             elif np.unique(outcome).shape[0] > 3:
-                train_y, train_edges = residualize(train_edges, train_y, train_confounds)
-                test_y, test_edges = residualize(test_edges, test_y, test_confounds)
+                train_y, train_edges = residualize(X=train_edges, y=train_y, confounds=train_confounds)
+                test_y, test_edges = residualize(X=test_edges, y=test_y, confounds=test_confounds)
         else:
             pass
         

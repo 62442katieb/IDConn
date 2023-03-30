@@ -14,7 +14,24 @@ from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 from nilearn import datasets, plotting, surface
 
+def calc_fd(confounds):
+    x = confounds['trans_x'].values
+    y = confounds['trans_y'].values
+    z = confounds['trans_z'].values
+    alpha = confounds['rot_x'].values
+    beta = confounds['rot_y'].values
+    gamma = confounds['rot_z'].values
+    
+    delta_x = [np.abs(t - s) for s, t in zip(x, x[1:])]
+    delta_y = [np.abs(t - s) for s, t in zip(y, y[1:])]
+    delta_z = [np.abs(t - s) for s, t in zip(z, z[1:])]
 
+    delta_alpha = [np.abs(t - s) for s, t in zip(alpha, alpha[1:])]
+    delta_beta = [np.abs(t - s) for s, t in zip(beta, beta[1:])]
+    delta_gamma = [np.abs(t - s) for s, t in zip(gamma, gamma[1:])]
+
+    fd = np.sum([delta_x, delta_y, delta_z, delta_alpha, delta_beta, delta_gamma], axis=0)
+    return fd
 
 def build_statsmodel_json(name, task, contrast, confounds, highpass, 
                           mask, conn_meas, graph_meas=None, exclude=None, outfile=None):
@@ -265,7 +282,67 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
         
         
         for session in sessions:
-            
+            runs = layout.get(return_type='id', 
+                              session=session,
+                              target='run', 
+                              task=task, 
+                              suffix='timeseries', 
+                              subject=subject, 
+                              scope=deriv_name)
+            if len(runs) > 0:
+                path = layout.get(return_type='filename', 
+                                    session=session,
+                                    run=runs[0], 
+                                    task=task, 
+                                    suffix='timeseries', 
+                                    subject=subject, 
+                                    scope=deriv_name)
+                confounds = pd.read_table(path[0], header=0, index_col=0)
+                if not 'framewise_displacement' in confounds.columns:
+                    fd = calc_fd(confounds)
+                    #fd.append(0)
+                    fd = np.append(fd, [0])
+                    confounds['framewise_displacement'] = fd
+                confound_means = confounds.mean(axis=0)
+                if len(runs) > 1:
+                    for run in runs[1:]:
+                        path = layout.get(return_type='filename', 
+                                        session=session,
+                                        run=run, 
+                                        task=task, 
+                                        suffix='timeseries', 
+                                        subject=subject, 
+                                        scope=deriv_name)
+                        confounds = pd.read_table(path[0], header=0, index_col=0)
+                        if not 'framewise_displacement' in confounds.columns:
+                            fd = calc_fd(confounds)
+                            #fd.append(0)
+                            fd = np.append(fd, [0])
+                            confounds['framewise_displacement'] = fd
+                        confound_means_temp = confounds.mean(axis=0)
+                        confound_means = np.mean(pd.concat([confound_means, confound_means_temp], axis=1), axis=1)
+                        #print(confound_means)
+            else:
+                path = path = layout.get(return_type='filename', 
+                                    session=session,
+                                    desc='confounds', 
+                                    task=task, 
+                                    suffix='timeseries', 
+                                    subject=subject, 
+                                    scope=deriv_name)
+                
+                confounds = pd.read_table(path[0], header=0, index_col=0)
+                if not 'framewise_displacement' in confounds.columns:
+                    fd = calc_fd(confounds)
+                    fd = np.append(fd, [0])
+                    confounds['framewise_displacement'] = fd 
+                confound_means = confounds.mean(axis=0)
+                #print(confound_means)
+            for confound in confound_means.index:
+                ppt_df.at[(f'sub-{subject}', 
+                        f'ses-{session}'), 
+                        confound] = confound_means[confound]
+
             if verbose:
                 print(session)
             else:
