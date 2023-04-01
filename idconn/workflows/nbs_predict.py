@@ -50,11 +50,13 @@ outcome = np.reshape(dat[OUTCOME].values, (len(dat[OUTCOME]),1))
 
 if CONFOUNDS is not None:
     confounds = dat[CONFOUNDS]
+    base_name = f'nbs-predict_outcome-{OUTCOME}_confounds-{CONFOUNDS}'
 else:
     confounds = None
+    base_name = f'nbs-predict_outcome-{OUTCOME}'
 #print(dat['bc'])
 
-weighted_average, cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, groups=dat['bc'], n_splits=10, n_iterations=100)
+weighted_average, cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, groups=dat['bc'], n_splits=10, n_iterations=1000)
 
 fig,fig2, nimg = io.plot_edges(weighted_average, 
                          atlas_fname, 
@@ -63,11 +65,6 @@ fig,fig2, nimg = io.plot_edges(weighted_average,
                          strength=True, 
                          cmap='seismic', 
                          node_size='strength')
-
-if CONFOUNDS is not None:
-    base_name = f'nbs-predict_outcome-{OUTCOME}_confounds-{CONFOUNDS}'
-else:
-    base_name = f'nbs-predict_outcome-{OUTCOME}'
 
 fig.savefig(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'{base_name}_weighted-{today_str}.png'), dpi=400)
 fig2.savefig(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'{base_name}_weighted-strength-{today_str}.png'), dpi=400)
@@ -106,10 +103,10 @@ if CONFOUNDS is not None:
     #regress out the confounds from each edge and the outcome variable, 
     # use the residuals for the rest of the algorithm
     #print(confounds.shape, outcome.shape)
-    if np.unique(outcome).shape[0] == 2:
+    if len(np.unique(outcome_train)) <= 2:
         resid_edges = nbs.residualize(X=edges_train, confounds=confounds_train)
         train_outcome = outcome
-    elif np.unique(outcome).shape[0] > 3:
+    elif len(np.unique(outcome_train)) > 3:
         train_outcome, resid_edges = nbs.residualize(X=edges_train, y=outcome_train, confounds=confounds_train)
     train_features = resid_edges[:,filter]
 else:
@@ -121,7 +118,7 @@ train_features = scaler.fit_transform(train_features)
 if len(np.unique(train_outcome)) <= 2:
     pass
 else:
-    outcome_test = scaler.fit_transform(train_outcome.reshape(-1, 1))
+    train_outcome = scaler.fit_transform(train_outcome.reshape(-1, 1))
 
 # run the model on the whole test dataset to get params
 
@@ -129,9 +126,9 @@ else:
 # could be extended to the multiclass case?
 
 if len(np.unique(outcome)) == 2:
-    model = LogisticRegression(penalty='elasticnet', solver='saga', l1_ratio=0.25, warm_start=True)
+    model = LogisticRegression(penalty='elasticnet', solver='saga', l1_ratio=0.25)
 else:
-    model = ElasticNet(l1_ratio=0.25, warm_start=True)
+    model = ElasticNet(l1_ratio=0.25)
 
 # train ElasticNet on full train dataset, using feature extraction from NBS-Predict
 train_metrics = {}
@@ -149,8 +146,6 @@ print('In-sample mean squared error: ', mse)
 #print(np.mean(train_features))
 with open(join(TRAIN_DSET, 'derivatives', DERIV_NAME, f'{base_name}_fit-{today_str}.json'), 'w') as fp:
     json.dump(train_metrics, fp)
-
-
 
 # yoink the coefficients? for a more parsimonious figure?
 coeff_vec = np.zeros_like(filter)
@@ -205,10 +200,10 @@ if CONFOUNDS is not None:
     #regress out the confounds from each edge and the outcome variable, 
     # use the residuals for the rest of the algorithm
     #print(confounds.shape, outcome.shape)
-    if np.unique(outcome_test).shape[0] == 2:
+    if len(np.unique(outcome_test)) <= 2:
         resid_edges = nbs.residualize(X=edges_test, confounds=confounds_test)
         test_outcome = outcome_test
-    elif np.unique(outcome_test).shape[0] > 3:
+    elif len(np.unique(outcome_test)) > 3:
         test_outcome, resid_edges = nbs.residualize(X=edges_test, y=outcome_test, confounds=confounds_test)
     test_features = resid_edges[:,filter]
 else:
@@ -243,13 +238,15 @@ test_metrics['mean squared error'] = mse
 print('Out-of-sample prediction score:\t', score)
 print('Out-of-sample mean squared error:\t', mse)
 #print(np.mean(test_features))
-pred_outcome = fitted.predict(test_features)
+#pred_outcome = fitted.predict(test_features)
 
-#print(test_outcome, '\n',pred_outcome)
+
+print(test_outcome, '\n',y_pred)
 #print(pred_outcome)
 if len(np.unique(test_outcome)) > 2:
-    corr = spearmanr(test_outcome, pred_outcome)
+    corr = spearmanr(test_outcome, y_pred)
     print(f'\nSpearman correlation between predicted and actual {OUTCOME}:\t', corr)
     test_metrics['spearman correlation'] = corr
 with open(join(TEST_DSET, 'derivatives', DERIV_NAME, f'{base_name}_fit-{today_str}.json'), 'w') as fp:
     json.dump(test_metrics, fp)
+np.savetxt(join(TEST_DSET, f'{base_name}_predicted-values_fit-{today_str}.txt'), y_pred)
