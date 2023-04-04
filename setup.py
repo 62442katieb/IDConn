@@ -27,14 +27,14 @@ setuptools.setup(
         "numpy",
         "scipy",
         "nilearn",
-        "sklearn",
+        "scikit-learn",
         "pandas",
         "nibabel",
         "bctpy",
         "pybids",
         "networkx",
-        "matplotlib", # necessary until nilearn includes mpl as a dependency
-        "enlighten",  
+        "matplotlib",  # necessary until nilearn includes mpl as a dependency
+        "enlighten",
     ],
     extras_require={
         "doc": [
@@ -46,7 +46,7 @@ setuptools.setup(
             "sphinx-copybutton",
             "sphinx_gallery==0.10.1",
             "sphinxcontrib-bibtex",
-            ],
+        ],
         "tests": [
             "codecov",
             "coverage",

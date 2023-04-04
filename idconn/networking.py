@@ -4,21 +4,24 @@ import seaborn as sns
 import networkx as nx
 import matplotlib.pyplot as plt
 from os.path import join
-#from nilearn.connectome import ConnectivityMeasure
+
+# from nilearn.connectome import ConnectivityMeasure
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.stats import skew
 import bct
-#import datetime
+
+# import datetime
 
 
 def avg_corrmat(ppt_df):
-    '''
+    """
     Reads in adjacency matrices from the pandas df with ppt info and adj, then computes an average.
-    '''
-    stacked_corrmats = np.array(ppt_df['adj'])
-    print('Stacked corrmats have dimensions', stacked_corrmats.shape)
+    """
+    stacked_corrmats = np.array(ppt_df["adj"])
+    print("Stacked corrmats have dimensions", stacked_corrmats.shape)
     avg_corrmat = np.mean(stacked_corrmats, axis=0)
     return avg_corrmat
+
 
 def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
     def get_rng(seed):
@@ -29,7 +32,7 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
         try:
             rstate = np.random.RandomState(seed)
         except ValueError:
-            rstate = np.random.RandomState(np.random.Random(seed).randint(0, 2 ** 32 - 1))
+            rstate = np.random.RandomState(np.random.Random(seed).randint(0, 2**32 - 1))
         return rstate
 
     def randmio_und_signed(R, itr, seed=None):
@@ -45,7 +48,6 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
         for it in range(int(itr)):
             att = 0
             while att <= max_attempts:
-
                 a, b, c, d = pick_four_unique_nodes_quickly(n, rng)
 
                 r0_ab = R[a, b]
@@ -59,7 +61,6 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
                     and np.sign(r0_ad) == np.sign(r0_cb)
                     and np.sign(r0_ab) != np.sign(r0_ad)
                 ):
-
                     R[a, d] = R[d, a] = r0_ab
                     R[a, b] = R[b, a] = r0_ad
 
@@ -80,11 +81,11 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
         clever but still substantially slower.
         """
         rng = get_rng(seed)
-        k = rng.randint(n ** 4)
+        k = rng.randint(n**4)
         a = k % n
         b = k // n % n
-        c = k // n ** 2 % n
-        d = k // n ** 3 % n
+        c = k // n**2 % n
+        d = k // n**3 % n
         if a != b and a != c and a != d and b != c and b != d and c != d:
             return (a, b, c, d)
         else:
@@ -134,9 +135,7 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
             W0.flat[Lij[Oind]] = s * Wv  # weight at this index
         else:
             wsize = np.size(Wv)
-            wei_period = np.round(1 / wei_freq).astype(
-                int
-            )  # convert frequency to period
+            wei_period = np.round(1 / wei_freq).astype(int)  # convert frequency to period
             lq = np.arange(wsize, 0, -wei_period, dtype=int)
             for m in lq:  # iteratively explore at this period
                 # get indices of Lij that sort P
@@ -170,16 +169,15 @@ def null_model(W, bin_swaps=5, wei_freq=0.1, seed=None):
     W0 = W0 + W0.T
     return W0
 
+
 def generate_null(ppt_df, thresh_arr, measure, permutations=1000):
-    '''
+    """
     Generate a distribution of graph measure values based on a null connectivity matrix
     that is like the average connectivity matrix across participants.
-    
-    '''
-    null_dist = pd.DataFrame(index=range(0,permutations), columns=["mean", "sdev"])
-    avg_corr = avg_corrmat(
-        ppt_df
-    )
+
+    """
+    null_dist = pd.DataFrame(index=range(0, permutations), columns=["mean", "sdev"])
+    avg_corr = avg_corrmat(ppt_df)
     eff_perm = []
     j = 0
     while j < permutations:
@@ -193,19 +191,21 @@ def generate_null(ppt_df, thresh_arr, measure, permutations=1000):
         leff_auc = np.trapz(effs_arr, dx=0.03, axis=0)
         eff_perm.append(leff_auc)
         j += 1
-    
+
     return null_dist
 
+
 def omst(matrix, density=True, plot=False):
-    '''
+    """
     WARNING: THIS IS SLOW AF, REPLACING WITH NETWORKX VERSION IN NEAR FUTURE
-    '''
+    """
     dims = matrix.shape
     if matrix.ndim > 2:
-        raise ValueError("'matrix' should be a 2D array. "
-                         "An array with %d dimension%s was passed"
-                         % (matrix.ndim,
-                            "s" if matrix.ndim > 1 else ""))
+        raise ValueError(
+            "'matrix' should be a 2D array. "
+            "An array with %d dimension%s was passed"
+            % (matrix.ndim, "s" if matrix.ndim > 1 else "")
+        )
     else:
         mst = minimum_spanning_tree(matrix)
         mst_arr = mst.toarray().astype(float)
@@ -217,7 +217,7 @@ def omst(matrix, density=True, plot=False):
         Cost = [cost]
 
         while np.sum(matrix_2) > 1000:
-            #print(np.sum(matrix_2))
+            # print(np.sum(matrix_2))
             mst = minimum_spanning_tree(matrix_2)
             mst_arr = mst.toarray().astype(float)
             matrix_2 = np.where(mst_arr != 0, 0, matrix_2)
@@ -231,26 +231,23 @@ def omst(matrix, density=True, plot=False):
         max_GCE = GCE.index(max_value)
         thresholded = np.sum(trees[:max_GCE, :, :], axis=0)
         if plot == True:
-            fig,ax = plt.subplots()
-            sns.lineplot(Cost, GCE, ax=ax, palette='husl')
-            plt.scatter(Cost[max_GCE], 
-                        GCE[max_GCE], 
-                        marker='x', 
-                        edgecolors=None, 
-                        c='magenta')
-            ax.set_ylabel('Global Cost Efficiency')
-            ax.set_xlabel('Cost')
-            
+            fig, ax = plt.subplots()
+            sns.lineplot(Cost, GCE, ax=ax, palette="husl")
+            plt.scatter(Cost[max_GCE], GCE[max_GCE], marker="x", edgecolors=None, c="magenta")
+            ax.set_ylabel("Global Cost Efficiency")
+            ax.set_xlabel("Cost")
+
         if density == True:
             den = np.sum(thresholded != 0) / (dims[0] * dims[1])
             return thresholded, den
     return thresholded, fig
 
+
 def graph_auc(matrix, thresholds, measure, args):
-    '''
+    """
     matrix : array
     measure : function from bctpy
-    '''
+    """
     from bct import measure, threshold_proportional
 
     metrics = []
@@ -258,11 +255,13 @@ def graph_auc(matrix, thresholds, measure, args):
         thresh = threshold_proportional(matrix, p, copy=True)
         metric = measure(thresh, args)
         metrics.append(metric)
-    auc= np.trapz(metrics, dx=0.01)
+    auc = np.trapz(metrics, dx=0.01)
     return auc
+
 
 def graph_omst(matrix, measure, args):
     from bct import measure
+
     # threshold using orthogonal minimum spanning tree
     thresh_mat = omst(matrix)
 
@@ -270,8 +269,9 @@ def graph_omst(matrix, measure, args):
     metric = measure(thresh_mat, args)
     return metric
 
+
 def scale_free_tau(corrmat, skew_thresh, proportional=True):
-    ''''
+    """'
     Calculates threshold at which network becomes scale-free, estimated from the skewness of the networks degree distribution.
     Parameters
     ----------
@@ -285,7 +285,7 @@ def scale_free_tau(corrmat, skew_thresh, proportional=True):
     -------
     tau : float
         Lowest vaue of tau (threshold) at which network is scale-free.
-    '''
+    """
     tau = 0.01
     skewness = 1
     while abs(skewness) > 0.3:
@@ -297,8 +297,9 @@ def scale_free_tau(corrmat, skew_thresh, proportional=True):
         tau += 0.01
     return tau
 
+
 def connected_tau(corrmat, proportional=True):
-    '''
+    """
     Calculates threshold at network becomes node connected, using NetworkX's `is_connected` function.
     Parameters
     ----------
@@ -312,7 +313,7 @@ def connected_tau(corrmat, proportional=True):
     -------
     tau : float
         Highest vaue of tau (threshold) at which network becomes node-connected.
-    '''
+    """
     tau = 0.01
     connected = False
     while connected == False:
