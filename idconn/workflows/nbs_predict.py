@@ -56,7 +56,7 @@ else:
     base_name = f'nbs-predict_outcome-{OUTCOME}'
 #print(dat['bc'])
 
-weighted_average, cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, groups=dat['bc'], n_splits=10, n_iterations=1000)
+weighted_average, cv_results = nbs.kfold_nbs(matrices, outcome, confounds, alpha, groups=dat['bc'], n_splits=10, n_iterations=100)
 
 fig,fig2, nimg = io.plot_edges(weighted_average, 
                          atlas_fname, 
