@@ -7,17 +7,15 @@ from scipy.stats import t, pearsonr, pointbiserialr, spearmanr
 import enlighten
 
 # import bct
-
+from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import (
     RepeatedStratifiedKFold,
     RepeatedKFold,
-    GridSearchCV,
-    StratifiedKFold,
-    KFold,
+    HalvingGridSearchCV
 )
 
 from sklearn.feature_selection import f_regression, f_classif
-from sklearn.linear_model import LogisticRegression, ElasticNet
+from sklearn.linear_model import LogisticRegression, ElasticNet, LogisticRegressionCV, ElasticNetCV
 from sklearn.preprocessing import StandardScaler
 
 from sklearn.metrics import mean_squared_error
@@ -319,12 +317,22 @@ def kfold_nbs(
         cv_results.at[i, "split"] = (train_idx, test_idx)
 
         # assert len(train_a_idx) == len(train_b_idx)
+        l1_ratio_grid = [0.2, 0.4, 0.6, 0.8]
         if np.unique(outcome).shape[0] == 2:
-            regressor = LogisticRegression(
-                l1_ratio=0.25, max_iter=1000, penalty="elasticnet", solver="saga"
+            regressor = LogisticRegressionCV(
+                l1_ratio=l1_ratio_grid, 
+                max_iter=100000, 
+                penalty="elasticnet", 
+                solver="saga", 
+                n_jobs=4
             )
+            
         else:
-            regressor = ElasticNet(l1_ratio=0.25, max_iter=1000)
+            regressor = ElasticNetCV(
+                l1_ratio=l1_ratio_grid, 
+                cv=4, 
+                n_jobs=4
+                )
 
         train_y = outcome[train_idx]
         test_y = outcome[test_idx]
@@ -374,6 +382,7 @@ def kfold_nbs(
             # so you don't have repeated edges
             # returns (n_edges, )
             nbs_vector = adj.values[upper_tri]
+            #print(nbs_vector.shape)
             # print(nbs_vector.shape)
             # use those to make a "significant edges" mask
             mask = nbs_vector == 1.0
@@ -385,12 +394,31 @@ def kfold_nbs(
             # returns (n_edges, samples)
             train_features = train_edges.T[mask]
             test_features = test_edges.T[mask]
+            #print(mask.shape, np.sum(mask), train_edges.shape, train_features.shape)
 
-            train_features = scaler.fit_transform(train_features.T)
-            test_features = scaler.fit_transform(test_features.T)
+            train_features = train_features.T
+            test_features = test_features.T
+            
+            #train_features = scaler.fit_transform(train_features.T)
+            #test_features = scaler.fit_transform(test_features.T)
+            #print(train_features.shape, train_y.shape)
+
+            #print(f"train_edges:\t{train_edges[:10, 0]}\ntrain_features:\t{train_features[:10, 0]}")
             # print(np.ravel(train_y))
             # train model predicting outcome from brain (note: no mas covariates)
+            # use grid search bc I want to know how to tune alpha and l1_ratio
+            
+            #grid = HalvingGridSearchCV(estimator=regressor, 
+            #                           param_grid=param_grid, 
+            #                           n_jobs=8, 
+            #                           cv=4, 
+            #                           factor=2,
+            #                           verbose=0,
+            #                           min_resources=20, 
+            #                           refit=True, 
+            #                           aggressive_elimination=False)
             model = regressor.fit(X=train_features, y=np.ravel(train_y))
+            
             cv_results.at[i, "model"] = model
 
             # score that model on the testing data
@@ -399,7 +427,11 @@ def kfold_nbs(
             # both from 0 (low) to 1 (high)
             score = model.score(X=test_features, y=np.ravel(test_y))
             cv_results.at[i, "score"] = score
-            # print(model.coef_.shape)
+            if i % (n_splits * n_iterations / 10) == 0:
+                mean = cv_results['score'].mean()
+                sdev = cv_results['score'].std()
+                print(f'Iteration {i} out of {n_splits * n_iterations}, average score:\t{mean:.2f} +/- {sdev:.2f}')
+            #print(score)
 
             m = 0
             param_vector = np.zeros_like(nbs_vector)
@@ -427,11 +459,10 @@ def kfold_nbs(
     # print(weighted_stack.shape)
     for j in index[1:]:
         # print(cv_results.at[j, 'score'])
-        if cv_results.at[j, "score"] > 0:
-            weighted = cv_results.at[j, "component"] * cv_results.at[j, "score"]
-            weighted_stack = np.dstack([weighted_stack, weighted])
-        else:
-            pass
+        weighted = cv_results.at[j, "component"] * cv_results.at[j, "score"]
+        weighted_stack = np.dstack([weighted_stack, weighted])
+
         # print(weighted_stack.shape, weighted.shape)
     weighted_average = np.mean(weighted_stack, axis=-1)
-    return weighted_average, cv_results
+    #model = cv_results.sort_values(by="score", ascending=False).iloc[0]["model"]
+    return weighted_average, cv_results, #model

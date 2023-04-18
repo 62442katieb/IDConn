@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import pandas as pd
 import numpy as np
-import pingouin as pg
 import nibabel as nib
+import seaborn as sns
 import bids
+import matplotlib.pyplot as plt
 from os.path import join
 from datetime import datetime
 from time import strftime
@@ -14,6 +15,9 @@ from idconn import nbs, io
 from sklearn.linear_model import LogisticRegression, ElasticNet
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
+from matplotlib.colors import ListedColormap
+import matplotlib as mpl
+
 
 import warnings
 import json
@@ -64,7 +68,7 @@ fig, fig2, nimg = io.plot_edges(
     weighted_average,
     atlas_fname,
     threshold="computed",
-    title=f"{OUTCOME} Precition-Weighted Average",
+    title=f"{OUTCOME} Precision-Weighted Average",
     strength=True,
     cmap="seismic",
     node_size="strength",
@@ -95,6 +99,7 @@ avg_df.to_csv(
     join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_weighted-{today_str}.tsv"), sep="\t"
 )
 
+best = cv_results.sort_values(by='score', ascending=False).iloc[0]['model']
 
 # this uses the most predictive subnetwork as features in the model
 # might replace with thresholded weighted_average
@@ -105,9 +110,10 @@ avg_df.to_csv(
 # either way, I don't think cv_results is necessary
 
 # here is where we'd threshold the weighted average to use for elastic-net
+weighted_average = np.where(weighted_average > 0, weighted_average, 0)
 nbs_vector = weighted_average[upper_tri]
-p50 = np.percentile(nbs_vector, 50)
-filter = np.where(nbs_vector >= p50, True, False)
+p75 = np.percentile(nbs_vector, 75)
+filter = np.where(nbs_vector >= p75, True, False)
 # print(nbs_vector.shape, filter.shape)
 
 # mask = io.vectorize_corrmats(filter)
@@ -127,9 +133,9 @@ if CONFOUNDS is not None:
         train_outcome, resid_edges = nbs.residualize(
             X=edges_train, y=outcome_train, confounds=confounds_train
         )
-    train_features = resid_edges[:, filter]
+    train_features = resid_edges[:,filter]
 else:
-    train_features = edges_train[:, filter]
+    train_features = edges_train[:,filter]
     train_outcome = outcome
 
 scaler = StandardScaler()
@@ -145,10 +151,18 @@ else:
 # could be extended to the multiclass case?
 
 if len(np.unique(outcome)) == 2:
-    model = LogisticRegression(penalty="elasticnet", solver="saga", l1_ratio=0.25)
+    model = LogisticRegression(
+        penalty="elasticnet", 
+        solver="saga", 
+        l1_ratio=best.l1_ratio_
+        )
 else:
-    model = ElasticNet(l1_ratio=0.25)
-
+    model = ElasticNet(
+        l1_ratio=best.l1_ratio_, 
+        alpha=best.alpha_
+        )
+#print(params)
+#model.set_params(**params)
 # train ElasticNet on full train dataset, using feature extraction from NBS-Predict
 train_metrics = {}
 fitted = model.fit(X=train_features, y=np.ravel(train_outcome))
@@ -158,6 +172,35 @@ if len(np.unique(outcome)) == 2:
 else:
     train_metrics["coefficient of determination"] = in_sample_score
 y_pred = fitted.predict(X=train_features)
+dat[f'{OUTCOME}_pred'] = y_pred
+dat[f'{OUTCOME}_scaled'] = train_outcome
+
+Ys = dat[[f'{OUTCOME}_pred', f'{OUTCOME}_scaled', 'bc', 'cycle_day']]
+Ys.to_csv(join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.tsv"), sep='\t')
+
+train_colors = ['#a08ad1', #light
+                '#685690', #medium
+                '#3f2d69' #dark
+                ]
+light_cmap = sns.color_palette('dark:#a08ad1')
+dark_cmap = sns.color_palette('dark:#685690')
+
+fig,ax = plt.subplots()
+g = sns.scatterplot(x='cycle_day', 
+                    y=f'{OUTCOME}_pred', 
+                    style='bc', 
+                    data=Ys,  
+                    ax=ax, 
+                    palette=dark_cmap)
+h = sns.scatterplot(x='cycle_day',
+                    y=f'{OUTCOME}_scaled', 
+                    style='bc', 
+                    data=Ys, 
+                    ax=ax, 
+                    palette=light_cmap)
+ax.legend(bbox_to_anchor=(1.0, 0.5))
+fig.savefig(join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.png"), dpi=400, bbox_inches='tight')
+
 mse = mean_squared_error(train_outcome, y_pred)
 train_metrics["mean squared error"] = mse
 print("In-sample prediction score: ", in_sample_score)
@@ -184,7 +227,8 @@ for i in range(0, filter.shape[0]):
 # print(coeff_vec)
 
 coef_mat = io.undo_vectorize(coeff_vec, num_node=num_node)
-# print(coef_mat == coef_mat.T)
+coef_df = pd.DataFrame(coef_mat, columns=avg_df.columns, index=avg_df.index)
+coef_df.to_csv(join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_betas-{today_str}.csv"))
 
 fig, fig2, nimg = io.plot_edges(
     coef_mat,
@@ -216,6 +260,7 @@ keep = test_df[[OUTCOME, "adj"]].dropna().index
 # print(keep)
 
 test_df = test_df.loc[keep]
+
 outcome_test = test_df[OUTCOME].values
 # print(test_df)
 
@@ -273,9 +318,53 @@ print("Out-of-sample prediction score:\t", score)
 print("Out-of-sample mean squared error:\t", mse)
 # print(np.mean(test_features))
 # pred_outcome = fitted.predict(test_features)
+test_df[f'{OUTCOME}_scaled'] = test_outcome
+test_df[f'{OUTCOME}_pred'] = y_pred
+Ys = test_df[[f'{OUTCOME}_scaled', 
+              f'{OUTCOME}_pred',
+              'cycle_day', 
+              'bc']]
+Ys.to_csv(join(TEST_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.tsv"), sep='\t')
+
+Ys['ppts'] = Ys.index.get_level_values(0)
 
 
-print(test_outcome, "\n", y_pred)
+light_colors = ['#33ACE3', #Bubbles
+                '#EA6964', #Blossom
+                '#4AB62C' #Buttercup
+                ]
+dark_colors = ['#1278a6', 
+               '#a11510', 
+               '#228208']
+light = ListedColormap(light_colors, name='light_powderpuff')
+dark = ListedColormap(dark_colors, name='dark_powderpuff')
+mpl.colormaps.register(cmap=light)
+mpl.colormaps.register(cmap=dark)
+
+fig,ax = plt.subplots()
+g = sns.scatterplot(x='cycle_day', 
+                    y=f'{OUTCOME}_pred', 
+                    style='bc', 
+                    data=Ys, 
+                    hue='ppts',  
+                    hue_order=['sub-Bubbles', 'sub-Blossom', 'sub-Buttercup'],
+                    ax=ax, 
+                    palette='light_powderpuff'
+                    )
+h = sns.scatterplot(x='cycle_day',
+                     y=f'{OUTCOME}_scaled', 
+                     style='bc', 
+                     data=Ys, 
+                     hue='ppts',
+                     hue_order=['sub-Bubbles', 'sub-Blossom', 'sub-Buttercup'], 
+                     ax=ax, 
+                     palette='dark_powderpuff')
+ax.legend(bbox_to_anchor=(1.0, 0.5), loc='center left')
+fig.savefig(join(TEST_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.png"), dpi=400, bbox_inches='tight')
+
+
+
+#print(test_outcome, "\n", y_pred)
 # print(pred_outcome)
 if len(np.unique(test_outcome)) > 2:
     corr = spearmanr(test_outcome, y_pred)
