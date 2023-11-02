@@ -242,7 +242,6 @@ for i in range(0, filter.shape[0]):
     else:
         pass
 
-# print(coeff_vec)
 
 coef_mat = io.undo_vectorize(coeff_vec, num_node=num_node)
 coef_df = pd.DataFrame(coef_mat, columns=avg_df.columns, index=avg_df.index)
