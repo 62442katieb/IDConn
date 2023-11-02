@@ -10,10 +10,12 @@ from datetime import datetime
 from time import strftime
 from scipy.stats import spearmanr
 from idconn import nbs, io
+from bct import threshold_proportional
 
 
-from sklearn.linear_model import LogisticRegression, ElasticNet
-from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold, cross_validate
+from sklearn.preprocessing import Normalizer, StandardScaler
 from sklearn.metrics import mean_squared_error
 from matplotlib.colors import ListedColormap
 import matplotlib as mpl
@@ -34,16 +36,18 @@ OUTCOME = "bc"
 CONFOUNDS = "framewise_displacement"
 TASK = "rest"
 ATLAS = "craddock2012"
+THRESH = 0.5
 alpha = 0.05
 atlas_fname = "/Users/katherine.b/Dropbox/HPC-Backup-083019/physics-retrieval/craddock2012_tcorr05_2level_270_2mm.nii.gz"
 
 
 layout = bids.BIDSLayout(TRAIN_DSET, derivatives=True)
 
-dat = io.read_corrmats(layout, task=TASK, deriv_name="IDConn", atlas=ATLAS, z_score=True)
+dat = io.read_corrmats(layout, task=TASK, deriv_name="IDConn", atlas=ATLAS, z_score=False)
 
 keep = dat["adj"].dropna().index
 dat = dat.loc[keep]
+
 # print(dat['adj'].values.shape)
 num_node = dat.iloc[0]["adj"].shape[0]
 
@@ -51,6 +55,7 @@ matrices = np.vstack(dat["adj"].values).reshape((len(keep), num_node, num_node))
 upper_tri = np.triu_indices(num_node, k=1)
 
 outcome = np.reshape(dat[OUTCOME].values, (len(dat[OUTCOME]), 1))
+groups = dat['bc']
 
 if CONFOUNDS is not None:
     confounds = dat[CONFOUNDS]
@@ -61,7 +66,7 @@ else:
 # print(dat['bc'])
 
 weighted_average, cv_results = nbs.kfold_nbs(
-    matrices, outcome, confounds, alpha, groups=dat["bc"], n_splits=10, n_iterations=100
+    matrices, outcome, confounds, alpha, groups=groups, n_splits=5, n_iterations=1000
 )
 
 fig, fig2, nimg = io.plot_edges(
@@ -111,13 +116,17 @@ best = cv_results.sort_values(by='score', ascending=False).iloc[0]['model']
 
 # here is where we'd threshold the weighted average to use for elastic-net
 weighted_average = np.where(weighted_average > 0, weighted_average, 0)
-nbs_vector = weighted_average[upper_tri]
-p75 = np.percentile(nbs_vector, 75)
-filter = np.where(nbs_vector >= p75, True, False)
+#nbs_vector = weighted_average[upper_tri]
+#p75 = np.percentile(nbs_vector, 75)
+#filter = np.where(nbs_vector >= p75, True, False)
 # print(nbs_vector.shape, filter.shape)
+thresh_average = threshold_proportional(weighted_average, THRESH)
+nbs_vector2 = thresh_average[upper_tri]
+#p75 = np.percentile(nbs_vector, 75)
+filter = np.where(nbs_vector2 > 0, True, False)
 
 # mask = io.vectorize_corrmats(filter)
-edges_train = np.vstack(dat["edge_vector"].dropna().values)
+edges_train = np.vstack(dat["edge_vector"].dropna().values)[:, filter]
 
 # NEED TO RESIDUALIZE IF CONFOUNDS IS NOT NONE
 if CONFOUNDS is not None:
@@ -133,49 +142,65 @@ if CONFOUNDS is not None:
         train_outcome, resid_edges = nbs.residualize(
             X=edges_train, y=outcome_train, confounds=confounds_train
         )
-    train_features = resid_edges[:,filter]
+    train_features = resid_edges
 else:
-    train_features = edges_train[:,filter]
+    train_features = edges_train
     train_outcome = outcome
 
-scaler = StandardScaler()
-train_features = scaler.fit_transform(train_features)
+x_scaler = StandardScaler()
+y_scaler = StandardScaler()
+train_features = x_scaler.fit_transform(train_features)
 if len(np.unique(train_outcome)) <= 2:
     pass
 else:
-    train_outcome = scaler.fit_transform(train_outcome.reshape(-1, 1))
+    train_outcome = y_scaler.fit_transform(train_outcome.reshape(-1, 1))
 
 # run the model on the whole test dataset to get params
 
 # classification if the outcome is binary (for now)
 # could be extended to the multiclass case?
 
+cv = RepeatedKFold(n_splits=5, n_repeats=10)
+
+train_metrics = {}
 if len(np.unique(outcome)) == 2:
     model = LogisticRegression(
-        penalty="elasticnet", 
+        penalty="l2", 
         solver="saga", 
-        l1_ratio=best.l1_ratio_
+        C=best.C_[0]
         )
+    train_metrics["alpha"] = best.C_[0]
+    #train_metrics["l1_ratio"] = best.l1_ratio_
 else:
-    model = ElasticNet(
-        l1_ratio=best.l1_ratio_, 
+    model = Ridge(
+        solver="saga",  
         alpha=best.alpha_
         )
+    train_metrics["alpha"] = best.alpha_
+    #train_metrics["l1_ratio"] = best.l1_ratio_
 #print(params)
 #model.set_params(**params)
 # train ElasticNet on full train dataset, using feature extraction from NBS-Predict
-train_metrics = {}
-fitted = model.fit(X=train_features, y=np.ravel(train_outcome))
-in_sample_score = fitted.score(X=train_features, y=np.ravel(train_outcome))
-if len(np.unique(outcome)) == 2:
-    train_metrics["accuracy"] = in_sample_score
-else:
-    train_metrics["coefficient of determination"] = in_sample_score
+
+scores = cross_validate(
+    model, 
+    train_features, 
+    train_outcome, 
+    groups=groups, 
+    cv=cv,
+    return_estimator=True, 
+    return_train_score=True
+    )
+train_metrics["in_sample_test"] = np.mean(scores['test_score'])
+train_metrics["in_sample_train"] = np.mean(scores['train_score'])
+
+fitted = scores['estimator'][0]
 y_pred = fitted.predict(X=train_features)
+train_metrics["true_v_pred_corr"] = spearmanr(y_pred, train_outcome)
 dat[f'{OUTCOME}_pred'] = y_pred
 dat[f'{OUTCOME}_scaled'] = train_outcome
 
-Ys = dat[[f'{OUTCOME}_pred', f'{OUTCOME}_scaled', 'bc', 'cycle_day']]
+Ys = dat[[f'{OUTCOME}_pred', f'{OUTCOME}_scaled']]
 Ys.to_csv(join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.tsv"), sep='\t')
 
 train_colors = ['#a08ad1', #light
@@ -186,25 +211,20 @@ light_cmap = sns.color_palette('dark:#a08ad1')
 dark_cmap = sns.color_palette('dark:#685690')
 
 fig,ax = plt.subplots()
-g = sns.scatterplot(x='cycle_day', 
+g = sns.scatterplot(x=f'{OUTCOME}_scaled',
                     y=f'{OUTCOME}_pred', 
-                    style='bc', 
+                    #style='bc', 
                     data=Ys,  
                     ax=ax, 
                     palette=dark_cmap)
-h = sns.scatterplot(x='cycle_day',
-                    y=f'{OUTCOME}_scaled', 
-                    style='bc', 
-                    data=Ys, 
-                    ax=ax, 
-                    palette=light_cmap)
-ax.legend(bbox_to_anchor=(1.0, 0.5))
+#ax.legend(bbox_to_anchor=(1.0, 0.5))
 fig.savefig(join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.png"), dpi=400, bbox_inches='tight')
 
 mse = mean_squared_error(train_outcome, y_pred)
 train_metrics["mean squared error"] = mse
-print("In-sample prediction score: ", in_sample_score)
+print("In-sample prediction score: ", train_metrics["in_sample_test"])
 print("In-sample mean squared error: ", mse)
+train_metrics["in_sample_mse"] = mse
 # print(np.mean(train_features))
 with open(
     join(TRAIN_DSET, "derivatives", DERIV_NAME, f"{base_name}_fit-{today_str}.json"), "w"
@@ -216,10 +236,8 @@ coeff_vec = np.zeros_like(filter)
 j = 0
 for i in range(0, filter.shape[0]):
     if filter[i] == True:
-        if len(np.unique(outcome)) == 2:
-            coeff_vec[i] = fitted.coef_[0, j]
-        else:
-            coeff_vec[i] = fitted.coef_[j]
+        #print(j)
+        coeff_vec[i] = fitted.coef_[0, j]
         j += 1
     else:
         pass
@@ -254,7 +272,7 @@ nib.save(
 
 layout = bids.BIDSLayout(TEST_DSET, derivatives=True)
 
-test_df = io.read_corrmats(layout, task=TASK, deriv_name="IDConn", atlas=ATLAS, z_score=True)
+test_df = io.read_corrmats(layout, task=TASK, deriv_name="IDConn", atlas=ATLAS, z_score=False)
 
 keep = test_df[[OUTCOME, "adj"]].dropna().index
 # print(keep)
@@ -268,7 +286,7 @@ outcome_test = test_df[OUTCOME].values
 matrices_test = np.vstack(test_df["adj"].dropna().values).reshape(
     (len(test_df["adj"].dropna().index), num_node, num_node)
 )
-edges_test = np.vstack(test_df["edge_vector"].dropna().values)
+edges_test = np.vstack(test_df["edge_vector"].dropna().values)[:, filter]
 
 # NEED TO RESIDUALIZE IF CONFOUNDS IS NOT NONE
 if CONFOUNDS is not None:
@@ -284,17 +302,17 @@ if CONFOUNDS is not None:
         test_outcome, resid_edges = nbs.residualize(
             X=edges_test, y=outcome_test, confounds=confounds_test
         )
-    test_features = resid_edges[:, filter]
+    test_features = resid_edges
 else:
-    test_features = edges_test[:, filter]
+    test_features = edges_test
     test_outcome = outcome_test
 
 # scale after residualizing omg
-test_features = scaler.fit_transform(test_features)
+test_features = x_scaler.transform(test_features)
 if len(np.unique(test_outcome)) <= 2:
     pass
 else:
-    test_outcome = scaler.fit_transform(test_outcome.reshape(-1, 1))
+    test_outcome = y_scaler.transform(test_outcome.reshape(-1, 1))
 # print(test_features.shape)
 # if the model is a logistic regression, i.e. with a binary outcome
 # then score is prediction accuracy
@@ -312,6 +330,8 @@ if len(np.unique(test_outcome)) == 2:
     test_metrics["accuracy"] = score
 else:
     test_metrics["coefficient of determination"] = score
+corr = spearmanr(test_outcome, y_pred)
+test_metrics["pred_v_actual_corr"] = corr
 mse = mean_squared_error(test_outcome, y_pred)
 test_metrics["mean squared error"] = mse
 print("Out-of-sample prediction score:\t", score)
@@ -321,9 +341,7 @@ print("Out-of-sample mean squared error:\t", mse)
 test_df[f'{OUTCOME}_scaled'] = test_outcome
 test_df[f'{OUTCOME}_pred'] = y_pred
 Ys = test_df[[f'{OUTCOME}_scaled', 
-              f'{OUTCOME}_pred',
-              'cycle_day', 
-              'bc']]
+              f'{OUTCOME}_pred']]
 Ys.to_csv(join(TEST_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.tsv"), sep='\t')
 
 Ys['ppts'] = Ys.index.get_level_values(0)
@@ -342,23 +360,15 @@ mpl.colormaps.register(cmap=light)
 mpl.colormaps.register(cmap=dark)
 
 fig,ax = plt.subplots()
-g = sns.scatterplot(x='cycle_day', 
+g = sns.scatterplot(x=f'{OUTCOME}_scaled', 
                     y=f'{OUTCOME}_pred', 
-                    style='bc', 
+                    #style='bc', 
                     data=Ys, 
                     hue='ppts',  
                     hue_order=['sub-Bubbles', 'sub-Blossom', 'sub-Buttercup'],
                     ax=ax, 
                     palette='light_powderpuff'
                     )
-h = sns.scatterplot(x='cycle_day',
-                     y=f'{OUTCOME}_scaled', 
-                     style='bc', 
-                     data=Ys, 
-                     hue='ppts',
-                     hue_order=['sub-Bubbles', 'sub-Blossom', 'sub-Buttercup'], 
-                     ax=ax, 
-                     palette='dark_powderpuff')
 ax.legend(bbox_to_anchor=(1.0, 0.5), loc='center left')
 fig.savefig(join(TEST_DSET, "derivatives", DERIV_NAME, f"{base_name}_actual-predicted.png"), dpi=400, bbox_inches='tight')
 
