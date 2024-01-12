@@ -13,122 +13,191 @@ Copyright 2020, Katherine Bottenhorn.
 Please scroll to bottom to read full license.
 """
 import warnings
-warnings.filterwarnings('ignore')
-#import numpy as np
+
+warnings.filterwarnings("ignore")
+# import numpy as np
 import pandas as pd
 import bids
 import argparse
-#import logging
-#from os import makedirs
+
+# import logging
+# from os import makedirs
 from os.path import exists
-#from glob import glob
-#from nilearn import input_data, connectome, plotting, image
-from idconn.connectivity import build_networks
+
+# from glob import glob
+# from nilearn import input_data, connectome, plotting, image
+from idconn.connectivity import rest_connectivity, task_connectivity
 from idconn.parser_utils import is_valid_file, is_valid_path
 
-#from idconn.networking import graph_theory, null_distribution
+# from idconn.networking import graph_theory, null_distribution
 
-#LGR = logging.getLogger(__name__)
-#LGR.setLevel(logging.INFO)
+# LGR = logging.getLogger(__name__)
+# LGR.setLevel(logging.INFO)
 
 
 def _get_parser():
-    parser = argparse.ArgumentParser(description='Make correlation matrices from BOLD data + mask.')
+    parser = argparse.ArgumentParser(
+        description="Make correlation matrices from BOLD data + mask."
+    )
     parser.add_argument(
-        'dset_dir',
+        "dset_dir",
         type=lambda x: is_valid_path(parser, x),
-        help='Path to BIDS dataset containing fmriprep derivatives folder.',
+        help="Path to BIDS dataset containing fmriprep derivatives folder.",
     )
     parser.add_argument(
-        'atlas',
+        "atlas",
         type=lambda x: is_valid_file(parser, x),
-        help='Path to atlas file in space specified by `space`.',
+        help="Path to atlas file in space specified by `space`.",
     )
-    parser.add_argument('task', type=str,
-                        help='Task to be analyzed.')
+    parser.add_argument("task", type=str, help="Task to be analyzed.")
     parser.add_argument(
-        '--space',
+        "--space",
         type=str,
-        help='Space in which to run analyses (must be the space `atlas` is in).',
+        help="Space in which to run analyses (must be the space `atlas` is in).",
         default="MNI152NLin2009cAsym",
     )
     parser.add_argument(
-        '--conn',
-        action='store',
-        choices=['covariance', 'correlation', 'partial correlation', 'tangent', 'precision'],
-        help='Metric used to calculate connectivity.',
-        default='correlation',
+        "--conn",
+        action="store",
+        choices=["covariance", "correlation", "partial correlation", "tangent", "precision"],
+        help="Metric used to calculate connectivity.",
+        default="correlation",
     )
     parser.add_argument(
-        '--bids_db',
+        "--bids_db",
         metavar="PATH",
         type=lambda x: is_valid_path(parser, x),
-        help='Path to saved BIDS dataset layout file.',
+        help="Path to saved BIDS dataset layout file.",
     )
     parser.add_argument(
-        '--confounds',
+        "--confounds",
         nargs="+",
         type=str,
-        help='Names of confound regressors from ',
+        help="Names of confound regressors from ",
         default=None,
     )
 
     return parser
 
 
-def idconn_workflow(dset_dir, atlas, task, out_dir, space="MNI152NLin2009cAsym", conn=None, bids_db=None, confounds=None):
-    print('Getting started!')
+def idconn_workflow(
+    dset_dir,
+    atlas,
+    task,
+    out_dir,
+    space="MNI152NLin2009cAsym",
+    conn=None,
+    bids_db=None,
+    confounds=None,
+):
+    print("Getting started!")
 
     if not confounds:
         confounds = [
-            "cosine00", "cosine01", "cosine02",
-            "trans_x", "trans_x_derivative1", "trans_x_power2", "trans_x_derivative1_power2",
-            "trans_y", "trans_y_derivative1", "trans_y_derivative1_power2", "trans_y_power2",
-            "trans_z", "trans_z_derivative1", "trans_z_power2", "trans_z_derivative1_power2",
-            "rot_x", "rot_x_derivative1", "rot_x_power2", "rot_x_derivative1_power2",
-            "rot_y", "rot_y_derivative1", "rot_y_power2", "rot_y_derivative1_power2",
-            "rot_z", "rot_z_derivative1", "rot_z_derivative1_power2", "rot_z_power2",
-            "a_comp_cor_00", "a_comp_cor_01", "a_comp_cor_02", "a_comp_cor_03", "a_comp_cor_04", "a_comp_cor_05", "a_comp_cor_06"
+            "cosine00",
+            "cosine01",
+            "cosine02",
+            "trans_x",
+            "trans_x_derivative1",
+            "trans_x_power2",
+            "trans_x_derivative1_power2",
+            "trans_y",
+            "trans_y_derivative1",
+            "trans_y_derivative1_power2",
+            "trans_y_power2",
+            "trans_z",
+            "trans_z_derivative1",
+            "trans_z_power2",
+            "trans_z_derivative1_power2",
+            "rot_x",
+            "rot_x_derivative1",
+            "rot_x_power2",
+            "rot_x_derivative1_power2",
+            "rot_y",
+            "rot_y_derivative1",
+            "rot_y_power2",
+            "rot_y_derivative1_power2",
+            "rot_z",
+            "rot_z_derivative1",
+            "rot_z_derivative1_power2",
+            "rot_z_power2",
+            "a_comp_cor_00",
+            "a_comp_cor_01",
+            "a_comp_cor_02",
+            "a_comp_cor_03",
+            "a_comp_cor_04",
+            "a_comp_cor_05",
+            "a_comp_cor_06",
         ]
 
     print(f"Atlas: {atlas}\nConnectivity measure: {conn}")
 
-    assert exists(dset_dir), f"Specified dataset doesn't exist:\n{dset_dir} not found.\n\nPlease check the filepath."
+    assert exists(
+        dset_dir
+    ), f"Specified dataset doesn't exist:\n{dset_dir} not found.\n\nPlease check the filepath."
     layout = bids.BIDSLayout(dset_dir, derivatives=True, database_path=bids_db)
-    subjects = layout.get(return_type='id', target='subject', suffix='bold')
+    subjects = layout.get(return_type="id", target="subject", suffix="bold")
     print(f"Subjects: {subjects}")
-    #runs = layout.get(return_type='id', target='session', suffix='bold')
-    preproc_subjects = layout.get(return_type='id', target='subject', task=task, space=space, desc='preproc', suffix='bold')
+    # runs = layout.get(return_type='id', target='session', suffix='bold')
+    preproc_subjects = layout.get(
+        return_type="id", target="subject", task=task, space=space, desc="preproc", suffix="bold"
+    )
     if len(subjects) != len(preproc_subjects):
-        print(f'{len(subjects)} subjects found in dset, only {len(preproc_subjects)} have preprocessed BOLD data. Pipeline is contniuing anyway, please double check preprocessed data if this doesn\'t seem right.')
+        print(
+            f"{len(subjects)} subjects found in dset, only {len(preproc_subjects)} have preprocessed BOLD data. Pipeline is contniuing anyway, please double check preprocessed data if this doesn't seem right."
+        )
 
-    example_events = layout.get(return_type='filename', suffix='events', task=task, subject=preproc_subjects[0])
-    events_df = pd.read_csv(example_events[0], header=0, index_col=0, sep='\t')
-    conditions = events_df['trial_type'].unique()
+    example_events = layout.get(
+        return_type="filename", suffix="events", task=task, subject=preproc_subjects[0]
+    )
+    events_df = pd.read_csv(example_events[0], header=0, index_col=0, sep="\t")
+    conditions = events_df["trial_type"].unique()
 
     print(f"Computing connectivity matrices using {atlas}")
     for subject in preproc_subjects:
         print(f"Subject {subject}")
-        sessions = layout.get(return_type='id', target='session', task=task, subject=subject, suffix='bold')
+        sessions = layout.get(
+            return_type="id", target="session", task=task, subject=subject, suffix="bold"
+        )
         print(f"Sessions with task-{task} found for {subject}: {sessions}")
         for session in sessions:
             print(f"Session {session}")
-            print(f"here are the inputs: {layout, subject, session, task, atlas, conn, space, confounds}")
-            if 'rest' in task:
+            print(
+                f"here are the inputs: {layout, subject, session, task, atlas, conn, space, confounds}"
+            )
+            if "rest" in task:
                 try:
-                    adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                    adj_matrix = rest_connectivity(
+                        layout, subject, session, task, atlas, conn, space, confounds
+                    )
                 except Exception as e:
-                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
+                    print(
+                        f"Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}"
+                    )
             if len(conditions) < 1:
                 try:
-                    adj_matrix = build_networks.connectivity(layout, subject, session, task, atlas, conn, space, confounds)
+                    adj_matrix = rest_connectivity(
+                        layout, subject, session, task, atlas, conn, space, confounds
+                    )
                 except Exception as e:
-                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
+                    print(
+                        f"Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}"
+                    )
             else:
                 try:
-                    adj_matrix = build_networks.task_connectivity(layout=layout, subject=subject, session=session, task=task, atlas=atlas, confounds=confounds, connectivity_metric=conn)
+                    adj_matrix = task_connectivity(
+                        layout=layout,
+                        subject=subject,
+                        session=session,
+                        task=task,
+                        atlas=atlas,
+                        confounds=confounds,
+                        connectivity_metric=conn,
+                    )
                 except Exception as e:
-                    print(f'Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}')
+                    print(
+                        f"Error building corrmat for sub-{subject}, ses-{session}, task-{task}: {e}"
+                    )
 
 
 def _main(argv=None):
@@ -138,7 +207,7 @@ def _main(argv=None):
     idconn_workflow(**vars(options))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _main()
 
 """
