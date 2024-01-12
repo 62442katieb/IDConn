@@ -35,7 +35,6 @@ def calc_fd(confounds):
     fd = np.sum([delta_x, delta_y, delta_z, delta_alpha, delta_beta, delta_gamma], axis=0)
     return fd
 
-
 def build_statsmodel_json(
     name,
     task,
@@ -132,7 +131,6 @@ def build_statsmodel_json(
         json.dump(statsmodel, outfile)
     return statsmodel_json
 
-
 def atlas_picker(atlas, path, key=None):
     """Takes in atlas name and path to file, if local, returns
     nifti-like object (usually file path to downloaded atlas),
@@ -192,8 +190,7 @@ def atlas_picker(atlas, path, key=None):
 
     return atlas, path
 
-
-def vectorize_corrmats(matrices):
+def vectorize_corrmats(matrices, diagonal=False):
     """Returns the vectorized upper triangles of a 3-dimensional array
     (i.e., node x node x matrix) of matrices. Output will be a 2-dimensional
     array (i.e., matrix x node^2)
@@ -210,11 +207,15 @@ def vectorize_corrmats(matrices):
         the input matrices.
     """
     # print(f'\n\n\n{matrices.shape}, {matrices.ndim}\n\n\n')
+    if diagonal == True:
+        k = 0
+    else:
+        k = 1
     num_node = matrices.shape[1]
-    upper_tri = np.triu_indices(num_node, k=1)
+    upper_tri = np.triu_indices(num_node, k=k)
     if matrices.ndim == 3:
         num_node = matrices.shape[1]
-        upper_tri = np.triu_indices(num_node, k=1)
+        upper_tri = np.triu_indices(num_node, k=k)
         num_matrices = matrices.shape[0]
         edge_vector = []
         for matrix in range(0, num_matrices):
@@ -234,7 +235,7 @@ def vectorize_corrmats(matrices):
     elif matrices.ndim == 1:
         if matrices[0].ndim == 2:
             num_node = matrices[0].shape[0]
-            upper_tri = np.triu_indices(num_node, k=1)
+            upper_tri = np.triu_indices(num_node, k=k)
             edge_vector = []
             for matrix in matrices:
                 vectorized = matrix[upper_tri]
@@ -247,7 +248,6 @@ def vectorize_corrmats(matrices):
             )
     edge_vector = np.asarray(edge_vector)
     return edge_vector
-
 
 def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True, verbose=False):
     """Returns a node x node x (subject x session) matrix of correlation matrices
@@ -419,8 +419,7 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
     ppt_df.replace({"": np.nan}, inplace=True)
     return ppt_df
 
-
-def undo_vectorize(edges, num_node=None):
+def undo_vectorize(edges, num_node=None, diagonal=False):
     """
     Puts an edge vector back into an adjacency matrix.
     Parameters
@@ -439,14 +438,24 @@ def undo_vectorize(edges, num_node=None):
     # num_node = (np.sqrt((8 * j) + 1) + 1) / 2
     if num_node == None:
         j = len(edges)
-        num_node = int((np.sqrt((8 * j) + 1) + 1) / 2)
+        if diagonal == False:
+            num_node = int((np.sqrt((8 * j) + 1) + 1) / 2)
+        else:
+            num_node = int((np.sqrt((8 * j) + 1) - 1) / 2)
     else:
         num_node = int(num_node)
     X = np.zeros((num_node, num_node))
-    X[np.triu_indices(X.shape[0], k=1)] = edges
+    if diagonal == False:
+        k=1
+    if diagonal == True:
+        k=0
+    X[np.triu_indices(num_node, k=k)] = edges
+    diag_X = X[np.diag_indices(num_node,2)]
     X = X + X.T
+    if diagonal == True:
+        X[np.diag_indices(num_node,2)] = diag_X
+    #print('did undo_vectorize work?', np.allclose(X, X.T))
     return X
-
 
 def plot_edges(
     adj,
@@ -499,7 +508,7 @@ def plot_edges(
     print("edge plotting threshold: ", threshold)
 
     if node_size == "strength":
-        node_strength = np.sum(adj, axis=0)
+        node_strength = np.abs(np.sum(adj, axis=0))
         # node_strength /= np.max(node_strength)
         # node_strength **= 4
         node_strength = node_strength / np.max(node_strength) * 60
@@ -535,7 +544,7 @@ def plot_edges(
         nimg = nib.load(atlas_nii)
         regn_sch_arr = nimg.get_fdata()
         for i in np.arange(0, num_node):
-            regn_sch_arr[np.where(regn_sch_arr == i + 1)] = np.sum(adj[i])
+            regn_sch_arr[np.where(regn_sch_arr == i + 1)] = np.sum((adj[i]))
         strength_nimg = nib.Nifti1Image(regn_sch_arr, nimg.affine)
         # replace this filename with BIDSy output
         # nib.save(strength_nimg, f'/Users/katherine.b/Dropbox/{title}predictive-strength.nii')
@@ -558,6 +567,7 @@ def plot_edges(
         i = plotting.plot_surf_stat_map(
             fsaverage.pial_left,
             texture_l,
+            bg_map=fsaverage.sulc_left,
             symmetric_cbar=False,
             threshold=0.5,
             cmap=cmap,
@@ -568,6 +578,7 @@ def plot_edges(
         j = plotting.plot_surf_stat_map(
             fsaverage.pial_left,
             texture_l,
+            bg_map=fsaverage.sulc_left,
             symmetric_cbar=False,
             threshold=0.5,
             cmap=cmap,
@@ -578,6 +589,7 @@ def plot_edges(
         k = plotting.plot_surf_stat_map(
             fsaverage.pial_right,
             texture_r,
+            bg_map=fsaverage.sulc_right,
             symmetric_cbar=False,
             threshold=0.5,
             cmap=cmap,
@@ -588,6 +600,7 @@ def plot_edges(
         l = plotting.plot_surf_stat_map(
             fsaverage.pial_right,
             texture_r,
+            bg_map=fsaverage.sulc_right,
             symmetric_cbar=False,
             threshold=0.5,
             cmap=cmap,
