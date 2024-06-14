@@ -253,6 +253,8 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
     """Returns a node x node x (subject x session) matrix of correlation matrices
     from a BIDS derivative folder. Optionally returns a node^2 x (subject x session)
     array of vectorized upper triangles of those correlation matrices.
+
+    ME @ ME: NEEDS AN OPTION TO KEEP RUNS SEPARATE. CURRENTLY IT AVERAGES CONFOUNDS AND 
     Parameters
     ----------
     layout : BIDSLayout or str
@@ -356,7 +358,7 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
                         )
                         # print(confound_means)
             else:
-                path = path = layout.get(
+                path = layout.get(
                     return_type="filename",
                     session=session,
                     desc="confounds",
@@ -397,7 +399,12 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
                 pass
             if type(path) == list:
                 # print(len(path))
+                ################################################################
+                ############ EEEEEEEEEEEEEEEEEK ################################
+                ############### DOES THIS ONLY GRAB ONE RUN?!?!?! ##############
+                ################################################################
                 path = path[0]
+                
             else:
                 pass
             assert exists(path), f"Corrmat file not found at {path}"

@@ -254,6 +254,8 @@ def task_connectivity(
 def rest_connectivity(
     layout, subject, session, task, atlas, confounds=None, connectivity_metric="correlation"
 ):
+    ###################################################################################
+    ################# Needs an option to keep runs separate. ##########################
     """
     Makes connectivity matrices per subject per session per task per condition.
     Parameters
