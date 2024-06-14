@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="IDConn",  # Replace with your own username
+    name="idconn",  # Replace with your own username
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     author="Katie Bottenhorn",
