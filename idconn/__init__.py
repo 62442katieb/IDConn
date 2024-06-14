@@ -12,13 +12,13 @@ with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("ignore")
     from . import connectivity
     from . import data
-    #from . import figures
+    from . import nbs
     from . import networking
 
     # from . import preprocessing
     # from . import statistics
     # from . import utils
-    # from . import io
+    from . import io
 
     __version__ = get_versions()["version"]
 
@@ -26,12 +26,13 @@ with warnings.catch_warnings(record=True) as w:
         "idconn",
         "connectivity",
         "data",
-        #"figures",
+        # "figures",
         "networking",
         # "preprocessing",
-        #"statistics",
+        # "statistics",
         # "utils",
-        # "io",
+        "io",
+        "nbs",
         "__version__",
     ]
 
