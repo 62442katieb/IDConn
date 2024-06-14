@@ -35,6 +35,7 @@ def calc_fd(confounds):
     fd = np.sum([delta_x, delta_y, delta_z, delta_alpha, delta_beta, delta_gamma], axis=0)
     return fd
 
+
 def build_statsmodel_json(
     name,
     task,
@@ -131,6 +132,7 @@ def build_statsmodel_json(
         json.dump(statsmodel, outfile)
     return statsmodel_json
 
+
 def atlas_picker(atlas, path, key=None):
     """Takes in atlas name and path to file, if local, returns
     nifti-like object (usually file path to downloaded atlas),
@@ -189,6 +191,7 @@ def atlas_picker(atlas, path, key=None):
             nifti.to_filename()
 
     return atlas, path
+
 
 def vectorize_corrmats(matrices, diagonal=False):
     """Returns the vectorized upper triangles of a 3-dimensional array
@@ -249,12 +252,13 @@ def vectorize_corrmats(matrices, diagonal=False):
     edge_vector = np.asarray(edge_vector)
     return edge_vector
 
+
 def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True, verbose=False):
     """Returns a node x node x (subject x session) matrix of correlation matrices
     from a BIDS derivative folder. Optionally returns a node^2 x (subject x session)
     array of vectorized upper triangles of those correlation matrices.
 
-    ME @ ME: NEEDS AN OPTION TO KEEP RUNS SEPARATE. CURRENTLY IT AVERAGES CONFOUNDS AND 
+    ME @ ME: NEEDS AN OPTION TO KEEP RUNS SEPARATE. CURRENTLY IT AVERAGES CONFOUNDS AND
     Parameters
     ----------
     layout : BIDSLayout or str
@@ -404,7 +408,7 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
                 ############### DOES THIS ONLY GRAB ONE RUN?!?!?! ##############
                 ################################################################
                 path = path[0]
-                
+
             else:
                 pass
             assert exists(path), f"Corrmat file not found at {path}"
@@ -425,6 +429,7 @@ def read_corrmats(layout, task, deriv_name, atlas, z_score=True, vectorized=True
                 ppt_df.at[(f"sub-{subject}", f"ses-{session}"), "edge_vector"] = edge_vector
     ppt_df.replace({"": np.nan}, inplace=True)
     return ppt_df
+
 
 def undo_vectorize(edges, num_node=None, diagonal=False):
     """
@@ -453,16 +458,17 @@ def undo_vectorize(edges, num_node=None, diagonal=False):
         num_node = int(num_node)
     X = np.zeros((num_node, num_node))
     if diagonal == False:
-        k=1
+        k = 1
     if diagonal == True:
-        k=0
+        k = 0
     X[np.triu_indices(num_node, k=k)] = edges
-    diag_X = X[np.diag_indices(num_node,2)]
+    diag_X = X[np.diag_indices(num_node, 2)]
     X = X + X.T
     if diagonal == True:
-        X[np.diag_indices(num_node,2)] = diag_X
-    #print('did undo_vectorize work?', np.allclose(X, X.T))
+        X[np.diag_indices(num_node, 2)] = diag_X
+    # print('did undo_vectorize work?', np.allclose(X, X.T))
     return X
+
 
 def plot_edges(
     adj,

@@ -8,11 +8,7 @@ import enlighten
 
 # import bct
 from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import (
-    RepeatedStratifiedKFold,
-    RepeatedKFold,
-    HalvingGridSearchCV
-)
+from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold, HalvingGridSearchCV
 
 from sklearn.feature_selection import f_regression, f_classif
 from sklearn.linear_model import LogisticRegression, ElasticNet, LogisticRegressionCV, RidgeCV
@@ -39,9 +35,9 @@ def calc_number_of_nodes(matrices):
 
 
 def residualize(X, y=None, confounds=None):
-    '''
+    """
     all inputs need to be arrays, not dataframes
-    '''
+    """
     # residualize the outcome
     if confounds is not None:
         if y is not None:
@@ -74,7 +70,9 @@ def residualize(X, y=None, confounds=None):
         print("Confound matrix wasn't provided, so no confounding was done")
 
 
-def pynbs(matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=False, permutations=10000):
+def pynbs(
+    matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=False, permutations=10000
+):
     """
     Calculates the Network Based Statistic (Zalesky et al., 2011) on connectivity matrices provided
     of shape ((subject x session)x node x node)
@@ -129,7 +127,6 @@ def pynbs(matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=
         edges = matrices.copy()
     # print(edges.shape)
 
-
     # edges = edges.T
 
     # run an ols per edge
@@ -145,13 +142,15 @@ def pynbs(matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=
 
     # find largest connected component of sig_edges
     # turn sig_edges into an nxn matrix first
-    sig_matrix = undo_vectorize(sig_edges, num_node=num_node, diagonal=diagonal)  # need to write this function
+    sig_matrix = undo_vectorize(
+        sig_edges, num_node=num_node, diagonal=diagonal
+    )  # need to write this function
     matrix = nx.from_numpy_array(sig_matrix)
 
     # use networkX to find connected components
     S = [matrix.subgraph(c).copy() for c in nx.connected_components(matrix)]
     S.sort(key=len, reverse=True)
-    #largest_cc = max(nx.connected_components(matrix), key=len)
+    # largest_cc = max(nx.connected_components(matrix), key=len)
     G0 = S[0]
     # print(G0)
 
@@ -202,7 +201,9 @@ def pynbs(matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=
             # print(np.sum(perm_edges))
             # find largest connected component of sig_edges
             # turn sig_edges into an nxn matrix first
-            perm_matrix = undo_vectorize(perm_edges, num_node=num_node, diagonal=diagonal)  # need to write this function
+            perm_matrix = undo_vectorize(
+                perm_edges, num_node=num_node, diagonal=diagonal
+            )  # need to write this function
             perm_nx = nx.from_numpy_array(perm_matrix)
 
             largest_cc = max(nx.connected_components(perm_nx), key=len)
@@ -233,7 +234,17 @@ def pynbs(matrices, outcome, num_node=None, diagonal=False, alpha=0.05, predict=
 
 
 def kfold_nbs(
-    matrices, outcome, confounds=None, alpha=0.05, groups=None, num_node=None, diagonal=False, scale_x=False, scale_y=False, n_splits=10, n_iterations=10
+    matrices,
+    outcome,
+    confounds=None,
+    alpha=0.05,
+    groups=None,
+    num_node=None,
+    diagonal=False,
+    scale_x=False,
+    scale_y=False,
+    n_splits=10,
+    n_iterations=10,
 ):
     """Calculates the Network Based Statistic (Zalesky et al., 20##) on connectivity matrices provided
     of shape ((subject x session)x node x node)
@@ -326,38 +337,38 @@ def kfold_nbs(
     if diagonal == True:
         k = 0
     if diagonal == False:
-        k=1
+        k = 1
     upper_tri = np.triu_indices(num_node, k=k)
 
     i = 0
     manager = enlighten.get_manager()
     ticks = manager.counter(total=n_splits * n_iterations, desc="Progress", unit="folds")
     for train_idx, test_idx in cv.split(edges, split_y):
-        
+
         cv_results.at[i, "split"] = (train_idx, test_idx)
 
         # assert len(train_a_idx) == len(train_b_idx)
         Cs = np.logspace(-4, 4, 10)
-        #print(len(np.unique(outcome)))
+        # print(len(np.unique(outcome)))
         if np.unique(outcome).shape[0] == 2:
-            #print('binary')
+            # print('binary')
             regressor = LogisticRegressionCV(
-                Cs=Cs, 
+                Cs=Cs,
                 cv=4,
-                #verbose=2,
-                max_iter=100000, 
-                penalty="l2", 
-                solver="saga", 
-                n_jobs=4
+                # verbose=2,
+                max_iter=100000,
+                penalty="l2",
+                solver="saga",
+                n_jobs=4,
             )
-            
+
         else:
-            #print('continuous')
+            # print('continuous')
             regressor = RidgeCV(
-                alphas=Cs, 
-                cv=4, 
-                #n_jobs=4
-                )
+                alphas=Cs,
+                cv=4,
+                # n_jobs=4
+            )
 
         train_y = outcome[train_idx]
         test_y = outcome[test_idx]
@@ -392,16 +403,14 @@ def kfold_nbs(
                 y_scaler = Normalizer()
                 train_y = y_scaler.fit_transform(train_y.reshape(-1, 1))
                 test_y = y_scaler.transform(test_y.reshape(-1, 1))
-        
-        
-
-       
 
         # perform NBS wooooooooo
         # note: output is a dataframe :)
         # PYNBS SHOULD NOT DO CONFOUND REGRESSION?
-        adj = pynbs(train_edges, train_y, num_node=num_node, diagonal=diagonal, alpha=alpha, predict=True)
-        #print(adj.shape, adj.ndim, adj[0].shape, upper_tri)
+        adj = pynbs(
+            train_edges, train_y, num_node=num_node, diagonal=diagonal, alpha=alpha, predict=True
+        )
+        # print(adj.shape, adj.ndim, adj[0].shape, upper_tri)
 
         # cv_results.at[i, 'pval'] = pval
         cv_results.at[i, "component"] = adj.values
@@ -413,7 +422,7 @@ def kfold_nbs(
             # so you don't have repeated edges
             # returns (n_edges, )
             nbs_vector = adj.values[upper_tri]
-            #print(nbs_vector.shape)
+            # print(nbs_vector.shape)
             # print(nbs_vector.shape)
             # use those to make a "significant edges" mask
             mask = nbs_vector == 1.0
@@ -425,31 +434,31 @@ def kfold_nbs(
             # returns (n_edges, samples)
             train_features = train_edges.T[mask]
             test_features = test_edges.T[mask]
-            #print(mask.shape, np.sum(mask), train_edges.shape, train_features.shape)
+            # print(mask.shape, np.sum(mask), train_edges.shape, train_features.shape)
 
             train_features = train_features.T
             test_features = test_features.T
-            
-            #train_features = scaler.fit_transform(train_features.T)
-            #test_features = scaler.fit_transform(test_features.T)
-            #print(train_features.shape, train_y.shape)
 
-            #print(f"train_edges:\t{train_edges[:10, 0]}\ntrain_features:\t{train_features[:10, 0]}")
+            # train_features = scaler.fit_transform(train_features.T)
+            # test_features = scaler.fit_transform(test_features.T)
+            # print(train_features.shape, train_y.shape)
+
+            # print(f"train_edges:\t{train_edges[:10, 0]}\ntrain_features:\t{train_features[:10, 0]}")
             # print(np.ravel(train_y))
             # train model predicting outcome from brain (note: no mas covariates)
             # use grid search bc I want to know how to tune alpha and l1_ratio
-            
-            #grid = HalvingGridSearchCV(estimator=regressor, 
-            #                           param_grid=param_grid, 
-            #                           n_jobs=8, 
-            #                           cv=4, 
+
+            # grid = HalvingGridSearchCV(estimator=regressor,
+            #                           param_grid=param_grid,
+            #                           n_jobs=8,
+            #                           cv=4,
             #                           factor=2,
             #                           verbose=0,
-            #                           min_resources=20, 
-            #                           refit=True, 
+            #                           min_resources=20,
+            #                           refit=True,
             #                           aggressive_elimination=False)
             model = regressor.fit(X=train_features, y=np.ravel(train_y))
-            
+
             cv_results.at[i, "model"] = model
 
             # score that model on the testing data
@@ -462,18 +471,20 @@ def kfold_nbs(
             # I go die now
             if np.unique(outcome).shape[0] == 2:
                 score = model.score(X=test_features, y=np.ravel(test_y))
-                
+
             else:
                 predicted_y = model.predict(X=test_features)
-                score,p = spearmanr(predicted_y, np.ravel(test_y))
-                #spearman = spearmanr(predicted_y, np.ravel(test_y))
-            
+                score, p = spearmanr(predicted_y, np.ravel(test_y))
+                # spearman = spearmanr(predicted_y, np.ravel(test_y))
+
             cv_results.at[i, "score"] = score
             if i % (n_splits * n_iterations / 10) == 0:
-                mean = cv_results['score'].mean()
-                sdev = cv_results['score'].std()
-                print(f'Iteration {i} out of {n_splits * n_iterations}, average score:\t{mean:.2f} +/- {sdev:.2f}')
-            #print(score)
+                mean = cv_results["score"].mean()
+                sdev = cv_results["score"].std()
+                print(
+                    f"Iteration {i} out of {n_splits * n_iterations}, average score:\t{mean:.2f} +/- {sdev:.2f}"
+                )
+            # print(score)
 
             m = 0
             param_vector = np.zeros_like(nbs_vector)
@@ -489,21 +500,21 @@ def kfold_nbs(
                 else:
                     pass
             X = undo_vectorize(param_vector, num_node=num_node, diagonal=diagonal)
-            #cv_results.at[i, "coefficient_matrix"] = X
-            #cv_results.at[i, "coefficient_vector"] = param_vector
+            # cv_results.at[i, "coefficient_matrix"] = X
+            # cv_results.at[i, "coefficient_vector"] = param_vector
             i += 1
         else:
             pass
         ticks.update()
     # calculate weighted average
     # print(cv_results['score'])
-    weighted_stack = np.zeros((num_node,num_node))
-    fake = np.zeros((num_node,num_node))
+    weighted_stack = np.zeros((num_node, num_node))
+    fake = np.zeros((num_node, num_node))
     # print(weighted_stack.shape)
     for j in index:
         # print(cv_results.at[j, 'score'])
         weighted = cv_results.at[j, "component"] * cv_results.at[j, "score"]
-        
+
         if np.sum(weighted) == 0 or np.isnan(np.sum(weighted)) == True:
             weighted_stack = np.dstack([weighted_stack, fake])
         else:
@@ -511,5 +522,8 @@ def kfold_nbs(
 
         # print(weighted_stack.shape, weighted.shape)
     weighted_average = np.mean(weighted_stack, axis=-1)
-    #model = cv_results.sort_values(by="score", ascending=False).iloc[0]["model"]
-    return weighted_average, cv_results, #model
+    # model = cv_results.sort_values(by="score", ascending=False).iloc[0]["model"]
+    return (
+        weighted_average,
+        cv_results,
+    )  # model
