@@ -35,6 +35,7 @@ setuptools.setup(
         "networkx",
         "matplotlib",  # necessary until nilearn includes mpl as a dependency
         "enlighten",
+        'pingouin'
     ],
     extras_require={
         "doc": [
