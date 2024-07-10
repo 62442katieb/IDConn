@@ -469,15 +469,12 @@ def kfold_nbs(
             # can't use MSE, which is the default score for ridge
             # because larger values = worse performance
             # I go die now
-            if np.unique(outcome).shape[0] == 2:
-                score = model.score(X=test_features, y=np.ravel(test_y))
-
+            score = model.score(X=test_features, y=np.ravel(test_y))
+            # spearman = spearmanr(predicted_y, np.ravel(test_y))
+            if score > 0:
+                cv_results.at[i, "score"] = score
             else:
-                predicted_y = model.predict(X=test_features)
-                score, p = spearmanr(predicted_y, np.ravel(test_y))
-                # spearman = spearmanr(predicted_y, np.ravel(test_y))
-
-            cv_results.at[i, "score"] = score
+                cv_results.at[i, "score"] = 0
             if i % (n_splits * n_iterations / 10) == 0:
                 mean = cv_results["score"].mean()
                 sdev = cv_results["score"].std()
